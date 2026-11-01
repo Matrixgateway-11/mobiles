@@ -161,7 +161,9 @@ begin
 
   insert into public.invitations (token, invited_by, invite_role, note, expires_at)
   values (
-    'inv_' || encode(gen_random_bytes(18), 'base64url'),
+    -- Tokens go in a URL path, so plain base64 is wrong: '/' and '+' break it.
+    -- translate() maps them to the URL-safe pair and drops the padding.
+    'inv_' || translate(encode(gen_random_bytes(18), 'base64'), '+/=', '-_'),
     auth.uid(),
     p_invite_role,
     coalesce(p_note, ''),
