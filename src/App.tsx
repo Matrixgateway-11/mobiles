@@ -13,18 +13,6 @@ import Login from '@/pages/Login'
 import { ForgotPassword } from '@/pages/ForgotCredential'
 
 import Dashboard from '@/pages/Dashboard'
-import Overview from '@/pages/Overview'
-import LoadMoney from '@/pages/LoadMoney'
-import Disbursements from '@/pages/Disbursements'
-import BankList from '@/pages/BankList'
-import PaymentLinks from '@/pages/PaymentLinks'
-import WalletLedger from '@/pages/WalletLedger'
-import QrTransactions from '@/pages/QrTransactions'
-import MyTeam from '@/pages/MyTeam'
-import AddUser from '@/pages/AddUser'
-import Tickets from '@/pages/Tickets'
-import Help from '@/pages/Help'
-import Settings from '@/pages/Settings'
 import NotFound from '@/pages/NotFound'
 import { Terms, Privacy } from '@/pages/Placeholder'
 
@@ -36,25 +24,21 @@ const Commission = lazy(() => import('@/pages/Commission'))
 // The applicant's form is never opened by signed-in staff, and the invitations
 // inbox only by the two roles that can onboard — neither belongs in the chunk
 // every page pays for.
+const Overview = lazy(() => import('@/pages/Overview'))
+const LoadMoney = lazy(() => import('@/pages/LoadMoney'))
+const Disbursements = lazy(() => import('@/pages/Disbursements'))
+const BankList = lazy(() => import('@/pages/BankList'))
+const PaymentLinks = lazy(() => import('@/pages/PaymentLinks'))
+const WalletLedger = lazy(() => import('@/pages/WalletLedger'))
+const QrTransactions = lazy(() => import('@/pages/QrTransactions'))
+const MyTeam = lazy(() => import('@/pages/MyTeam'))
+const AddUser = lazy(() => import('@/pages/AddUser'))
+const Tickets = lazy(() => import('@/pages/Tickets'))
+const Help = lazy(() => import('@/pages/Help'))
+const Settings = lazy(() => import('@/pages/Settings'))
 const TwoFactor = lazy(() => import('@/pages/TwoFactor'))
 const PublicOnboarding = lazy(() => import('@/pages/PublicOnboarding'))
 const Invitations = lazy(() => import('@/pages/Invitations'))
-
-/** Holds the page's shape while a lazy route resolves, so nothing jumps. */
-function PageSkeleton() {
-  return (
-    <div className="animate-pulse" aria-busy="true" aria-label="Loading">
-      <div className="h-8 w-56 rounded-lg bg-ink-200" />
-      <div className="mt-3 h-4 w-96 max-w-full rounded bg-ink-100" />
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className="h-28 rounded-xl border border-ink-200 bg-white" />
-        ))}
-      </div>
-      <div className="mt-6 h-80 rounded-xl border border-ink-200 bg-white" />
-    </div>
-  )
-}
 
 /* Route gates.
 
@@ -211,9 +195,7 @@ export default function App() {
           <Route
             path="/credit-card-payments/reports"
             element={
-              <Suspense fallback={<PageSkeleton />}>
                 <Reports />
-              </Suspense>
             }
           />
 
@@ -221,9 +203,7 @@ export default function App() {
           <Route
             path="/commission"
             element={
-              <Suspense fallback={<PageSkeleton />}>
                 <Commission />
-              </Suspense>
             }
           />
 
@@ -247,9 +227,7 @@ export default function App() {
             path="/users/invitations"
             element={
               <RequireManager>
-                <Suspense fallback={<PageSkeleton />}>
-                  <Invitations />
-                </Suspense>
+                <Invitations />
               </RequireManager>
             }
           />

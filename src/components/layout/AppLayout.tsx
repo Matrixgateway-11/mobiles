@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
+import { PageSkeleton } from '@/components/PageSkeleton'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { Footer } from './Footer'
@@ -50,7 +51,11 @@ export function AppLayout() {
         <Topbar onOpenMobileNav={() => setMobileOpen(true)} />
         <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
           <div className="mx-auto w-full max-w-[90rem]">
-            <Outlet />
+            {/* One boundary for every routed page: the shell is already on
+                screen, only the content is still arriving. */}
+            <Suspense fallback={<PageSkeleton />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
         <Footer />
