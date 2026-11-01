@@ -107,19 +107,30 @@ goes up and ₹99,000 stays.
 
 ## Authentication
 
-Supabase Auth, email and password. The password is hashed and verified by
-Supabase; nothing in this repo ever handles a credential. The signed-in user's
-profile decides the role, so admin, distributor and retailer are three views of
-the same console rather than three builds.
+Supabase Auth, one credential per account. The admin signs in with a password;
+distributors and retailers sign in with the 6-digit MPIN issued when their
+application is approved. Both are the same thing to Supabase — a password it
+hashes and verifies server-side — so the sign-in screen only changes the input,
+never the request. The mode is picked by the person signing in rather than
+looked up from the email address, which would tell anyone which addresses
+exist.
 
-**There is no second factor yet, and that is a deliberate pause rather than an
-oversight.** The plan was password plus a one-time code by email, but Supabase
-will not *enforce* an email OTP as a second factor: `signInWithOtp` is a primary
-sign-in method, and anyone holding the publishable key can call it directly, so
-layering it on top of a password in the client would look like two factors
-while being one. The options that are genuinely enforced are TOTP, which
-Supabase gates at the token level with `aal2` and which RLS can require, or a
-custom flow behind an edge function with its own SMTP. That decision is open.
+The project allows this: minimum password length 6, no character requirements.
+
+**What an MPIN is worth, stated plainly.** Six digits is a million
+combinations. Supabase rate-limits the auth endpoint, which makes online
+guessing slow rather than impossible, and the code is static until someone
+reissues it. It is weaker than a password and much weaker than a second factor,
+and it is a deliberate trade for merchants who will not install an app.
+
+**Second factor: TOTP, deferred.** It is enabled in the project and free, and
+it is the only second factor Supabase actually enforces — the assurance level
+rides in the JWT as `aal2`, which RLS can require. An email OTP layered on a
+password in the client cannot be enforced that way: `signInWithOtp` is a
+primary sign-in method and anyone holding the publishable key can call it
+directly, so it would look like two factors while being one. When TOTP lands it
+starts with the admin, and the enrolment screen needs an admin-side reset for
+lost phones or it becomes a support queue.
 
 Until a project is configured the console runs on fixtures and the sign-in form
 is a doorway, not a check — `src/lib/config.ts` decides which, and the account
