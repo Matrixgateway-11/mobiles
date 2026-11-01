@@ -1,0 +1,199 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------------
+   Design tokens
+   ---------------------------------------------------------------------------
+   Density-first console scale. Base text is 14px, not 16px — this is a data
+   product, and the default web scale wastes a third of every table row.
+   Colour is rationed: the maroon is brand-only (nav, primary action, logo),
+   greens read as money in, neutrals carry everything else. Red is reserved
+   for genuine failure, never for ordinary debits.
+--------------------------------------------------------------------------- */
+
+@theme {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Type scale — 11 / 12 / 13 / 14 / 15 / 16 / 18 / 20 / 24 / 30 */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-2xs--letter-spacing: 0.04em;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.375rem;
+  --text-md: 0.9375rem;
+  --text-md--line-height: 1.5rem;
+  --text-lg: 1rem;
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.125rem;
+  --text-xl--line-height: 1.625rem;
+  --text-2xl: 1.25rem;
+  --text-2xl--line-height: 1.75rem;
+  --text-3xl: 1.5rem;
+  --text-3xl--line-height: 1.875rem;
+  --text-4xl: 1.875rem;
+  --text-4xl--line-height: 2.25rem;
+
+  /* Brand — burnt maroon */
+  --color-brand-50: #fdf4f1;
+  --color-brand-100: #fae4dd;
+  --color-brand-200: #f4c8ba;
+  --color-brand-300: #eaa18c;
+  --color-brand-400: #db735a;
+  --color-brand-500: #c74c33;
+  --color-brand-600: #ab351a;
+  --color-brand-700: #931f08;
+  --color-brand-800: #7a1b08;
+  --color-brand-900: #6b1a0b;
+  --color-brand-950: #3d0e05;
+
+  /* Neutrals — warm greys so they sit under the maroon without going blue */
+  --color-ink-25: #fcfcfb;
+  --color-ink-50: #f8f8f7;
+  --color-ink-100: #f2f2f0;
+  --color-ink-200: #e7e6e3;
+  --color-ink-300: #d6d4d0;
+  --color-ink-400: #a8a6a0;
+  --color-ink-500: #7b7973;
+  --color-ink-600: #5c5a54;
+  --color-ink-700: #44423d;
+  --color-ink-800: #2c2a27;
+  --color-ink-900: #1a1917;
+  --color-ink-950: #0f0e0d;
+
+  /* Semantic — desaturated so a table of 40 rows stays calm */
+  --color-success-50: #edf7f1;
+  --color-success-100: #d6ecdf;
+  --color-success-200: #aed9c0;
+  --color-success-600: #157951;
+  --color-success-700: #0f6b46;
+  --color-success-800: #0b5236;
+
+  --color-danger-50: #fdf1f0;
+  --color-danger-100: #fadedb;
+  --color-danger-200: #f3bdb7;
+  --color-danger-600: #cf4a3c;
+  --color-danger-700: #b03226;
+  --color-danger-800: #8d281e;
+
+  --color-warning-50: #fdf6ec;
+  --color-warning-100: #f9e9cd;
+  --color-warning-200: #f0d39c;
+  --color-warning-600: #b8812a;
+  --color-warning-700: #966520;
+
+  --color-info-50: #eef3fb;
+  --color-info-100: #d9e4f6;
+  --color-info-200: #b4caec;
+  --color-info-600: #35629f;
+  --color-info-700: #2a4e81;
+
+  /* Radii — restrained. Pills only for status chips. */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.625rem;
+  --radius-2xl: 0.75rem;
+
+  /* Elevation — hairlines do the work; shadow only lifts true overlays */
+  --shadow-xs: 0 1px 2px 0 rgb(26 25 23 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(26 25 23 / 0.06), 0 1px 2px -1px rgb(26 25 23 / 0.04);
+  --shadow-md: 0 4px 12px -2px rgb(26 25 23 / 0.08), 0 2px 4px -2px rgb(26 25 23 / 0.04);
+  --shadow-lg: 0 12px 32px -8px rgb(26 25 23 / 0.14), 0 4px 8px -4px rgb(26 25 23 / 0.06);
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-ink-200);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-ink-50);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Money and identifiers never reflow between renders */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  ::selection {
+    background-color: var(--color-brand-100);
+    color: var(--color-brand-900);
+  }
+
+  /* Native controls inherit the type scale instead of the browser's */
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+}
+
+@layer components {
+  /* Scrollbars inside the dark sidebar and long tables */
+  .scrollbar-slim {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-ink-300) transparent;
+  }
+  .scrollbar-slim::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    background-color: var(--color-ink-300);
+    border-radius: 999px;
+  }
+  .scrollbar-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-slim-dark {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+  }
+  .scrollbar-slim-dark::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-slim-dark::-webkit-scrollbar-thumb {
+    background-color: rgb(255 255 255 / 0.18);
+    border-radius: 999px;
+  }
+  .scrollbar-slim-dark::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@keyframes sheen {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
