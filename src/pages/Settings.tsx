@@ -46,7 +46,7 @@ export default function Settings() {
       <PageHeader
         breadcrumb={[{ label: 'Home', to: '/dashboard' }, { label: 'Account settings' }]}
         title="Account settings"
-        description="Your profile, the KYC records behind it, and how this account is secured."
+        description="Your profile, KYC and account security."
       />
 
       <Tabs tabs={TABS} value={tab} onChange={setTab} className="mb-6" />
@@ -186,7 +186,7 @@ function KycTab() {
       <Card>
         <CardHeader
           title="KYC records"
-          description="What Sai Mobiles holds against this account, and when each was verified."
+          description="What is on file, and when it was verified."
           actions={<Button icon={RiFileShield2Line}>Download pack</Button>}
         />
         <TableWrap>
@@ -389,7 +389,7 @@ function ActivityTab() {
       <Card>
         <CardHeader
           title="Recent activity"
-          description="Sign-ins and anything that moved money or changed a credential."
+          description="Sign-ins, money movement and credential changes."
         />
         <TableWrap>
           <THead>

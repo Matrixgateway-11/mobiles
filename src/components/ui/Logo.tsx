@@ -18,7 +18,7 @@ export function Logo({
         className={cn(
           'inline-flex size-7 shrink-0 items-center justify-center rounded-md',
           'text-[0.6875rem] font-bold tracking-[0.02em]',
-          onDark ? 'bg-white text-brand-800' : 'bg-brand-700 text-white',
+          onDark ? 'bg-brand-600 text-white' : 'bg-brand-600 text-white',
         )}
         aria-hidden
       >

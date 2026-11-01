@@ -11,13 +11,15 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'subtle' | 'danger'
 type Size = 'sm' | 'md' | 'lg'
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-900',
+  // A pressed button that moves a hair is the cheapest feedback there is.
+  primary:
+    'bg-brand-600 text-white shadow-xs hover:bg-brand-700 active:bg-brand-800 active:translate-y-px',
   secondary:
-    'bg-white text-ink-800 border border-ink-200 hover:bg-ink-50 hover:border-ink-300 active:bg-ink-100',
+    'bg-white text-ink-800 border border-ink-200 shadow-xs hover:bg-ink-50 hover:border-ink-300 active:bg-ink-100 active:translate-y-px',
   ghost: 'text-ink-600 hover:bg-ink-100 hover:text-ink-900 active:bg-ink-200',
-  subtle: 'bg-ink-100 text-ink-800 hover:bg-ink-200 active:bg-ink-300',
+  subtle: 'bg-ink-100 text-ink-800 hover:bg-ink-200 active:bg-ink-300 active:translate-y-px',
   danger:
-    'bg-white text-danger-700 border border-danger-200 hover:bg-danger-50 active:bg-danger-100',
+    'bg-white text-danger-700 border border-danger-200 shadow-xs hover:bg-danger-50 hover:border-danger-300 active:bg-danger-100 active:translate-y-px',
 }
 
 const SIZES: Record<Size, string> = {
@@ -58,7 +60,7 @@ export function Button<T extends ElementType = 'button'>({
     <Component
       className={cn(
         'inline-flex shrink-0 items-center justify-center font-medium whitespace-nowrap',
-        'transition-colors duration-100',
+        'transition-[background-color,border-color,color,transform,box-shadow] duration-150',
         'disabled:pointer-events-none disabled:opacity-55',
         VARIANTS[variant],
         SIZES[size],

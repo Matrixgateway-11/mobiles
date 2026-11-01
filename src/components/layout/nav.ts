@@ -4,6 +4,7 @@ import {
   RiQrCodeLine,
   RiPercentLine,
   RiTeamLine,
+  RiInboxLine,
   RiTicket2Line,
   RiQuestionLine,
   RiSettings3Line,
@@ -17,6 +18,7 @@ export type NavItem = {
   label: string
   icon: RemixiconComponentType
   to?: string
+  badge?: number
   children?: NavLeaf[]
 }
 
@@ -66,17 +68,21 @@ export function navigationFor(role: Role, pendingInvites = 0): NavSection[] {
   const network: NavSection = {
     label: role === 'admin' ? 'Network' : 'Users',
     items: [
+      /* Invitations sits above User Management, and outside it. It is a queue
+         of work waiting on you, not a directory you browse — and a count
+         buried inside a collapsed group is a count nobody sees. */
+      {
+        label: 'Invitations',
+        icon: RiInboxLine,
+        to: '/users/invitations',
+        badge: pendingInvites || undefined,
+      },
       {
         label: 'User Management',
         icon: RiTeamLine,
         children: [
           { label: role === 'admin' ? 'All Accounts' : 'My Team & Activity', to: '/users' },
           { label: 'Add User', to: '/users/add' },
-          {
-            label: 'Invitations',
-            to: '/users/invitations',
-            badge: pendingInvites || undefined,
-          },
         ],
       },
     ],

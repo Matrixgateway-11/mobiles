@@ -169,7 +169,7 @@ export default function Tickets() {
       <Card className="mt-4">
         <CardHeader
           title="Recent tickets"
-          description="Newest first. A ticket stays open until you or support closes it."
+          description="Newest first."
         />
 
         {visible.length === 0 ? (

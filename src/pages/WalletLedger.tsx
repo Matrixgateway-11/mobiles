@@ -55,7 +55,7 @@ export default function WalletLedger() {
       <PageHeader
         breadcrumb={[{ label: 'Home', to: '/dashboard' }, { label: 'Wallet Ledger' }]}
         title="Wallet ledger"
-        description="Every credit and debit against your wallet, with running balance tracking."
+        description="Every credit and debit against your wallet."
         actions={
           <Button icon={RiDownload2Line}>Export CSV</Button>
         }

@@ -37,7 +37,7 @@ export default function Help() {
       <PageHeader
         breadcrumb={[{ label: 'Home', to: '/dashboard' }, { label: 'Help & support' }]}
         title="Help & support"
-        description="Reach us directly for a quick question, or raise a ticket for anything that needs tracking."
+        description="Quick question, or raise a ticket to track it."
         actions={
           <Button as={Link} to="/tickets" variant="primary" icon={RiTicket2Line}>
             Raise a ticket

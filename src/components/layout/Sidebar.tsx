@@ -66,7 +66,7 @@ export function Sidebar({
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex flex-col bg-brand-900 text-white',
+          'fixed inset-y-0 left-0 z-40 flex flex-col bg-ink-950 text-white',
           'transition-[width,transform] duration-200 ease-out',
           collapsed ? 'w-16' : 'w-62',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
@@ -74,13 +74,13 @@ export function Sidebar({
       >
         <div
           className={cn(
-            'flex h-14 shrink-0 items-center border-b border-white/10',
+            'flex h-14 shrink-0 items-center border-b border-white/8',
             collapsed ? 'justify-center px-0' : 'justify-between pr-2 pl-4',
           )}
         >
           {collapsed ? (
             <span
-              className="inline-flex size-7 items-center justify-center rounded-md bg-white text-[0.6875rem] font-bold tracking-[0.02em] text-brand-800"
+              className="inline-flex size-7 items-center justify-center rounded-md bg-brand-600 text-[0.6875rem] font-bold tracking-[0.02em] text-white"
               aria-label="Sai Mobiles"
             >
               SM
@@ -115,11 +115,11 @@ export function Sidebar({
           {navigation.map((section) => (
             <div key={section.label} className="pt-5 first:pt-3">
               {!collapsed && (
-                <p className="px-4 pb-2 text-2xs font-semibold tracking-[0.14em] text-white/35 uppercase">
+                <p className="px-4 pb-2 text-2xs font-semibold tracking-[0.14em] text-white/30 uppercase">
                   {section.label}
                 </p>
               )}
-              {collapsed && <div className="mx-3 mb-3 border-t border-white/10 first:hidden" />}
+              {collapsed && <div className="mx-3 mb-3 border-t border-white/8 first:hidden" />}
 
               <ul className="space-y-0.5 px-2">
                 {section.items.map((item) => (
@@ -139,7 +139,7 @@ export function Sidebar({
         </nav>
 
         {collapsed && (
-          <div className="hidden shrink-0 border-t border-white/10 p-2 lg:block">
+          <div className="hidden shrink-0 border-t border-white/8 p-2 lg:block">
             <button
               type="button"
               onClick={onToggleCollapsed}
@@ -176,7 +176,7 @@ function SidebarItem({
   const Icon = item.icon
   // Collapsed, the submenu is hidden, so anything waiting inside it needs a
   // mark on the parent or it goes unnoticed.
-  const waiting = item.children?.reduce((sum, child) => sum + (child.badge ?? 0), 0) ?? 0
+  const waiting = item.badge ?? item.children?.reduce((sum, child) => sum + (child.badge ?? 0), 0) ?? 0
 
   if (item.to) {
     return (
@@ -190,13 +190,33 @@ function SidebarItem({
               ROW,
               collapsed && 'justify-center px-0',
               isActive
-                ? 'bg-white/12 font-medium text-white'
-                : 'text-white/70 hover:bg-white/8 hover:text-white',
+                ? 'bg-brand-600/25 font-medium text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)]'
+                : 'text-white/60 hover:bg-white/6 hover:text-white',
             )
           }
         >
-          <Icon size={18} className={cn('shrink-0', active ? 'text-brand-200' : 'text-white/55')} />
-          {!collapsed && <span className="truncate">{item.label}</span>}
+          <span className="relative shrink-0">
+            <Icon size={18} className={active ? 'text-brand-300' : 'text-white/45'} />
+            {collapsed && waiting > 0 && (
+              <span
+                className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-brand-500 ring-2 ring-ink-950"
+                aria-label={`${waiting} waiting`}
+              />
+            )}
+          </span>
+          {!collapsed && (
+            <>
+              <span className="truncate">{item.label}</span>
+              {waiting > 0 && (
+                <span
+                  className="tnum ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-2xs font-semibold tracking-normal text-white"
+                  aria-label={`${waiting} waiting`}
+                >
+                  {waiting}
+                </span>
+              )}
+            </>
+          )}
         </NavLink>
       </li>
     )
@@ -215,15 +235,15 @@ function SidebarItem({
           // Collapsed, the open submenu can't show which section you're in,
           // so the parent carries the active state itself.
           active
-            ? cn('text-white', collapsed && 'bg-white/12 font-medium')
-            : 'text-white/70 hover:bg-white/8 hover:text-white',
+            ? cn('text-white', collapsed && 'bg-brand-600/25 font-medium')
+            : 'text-white/60 hover:bg-white/6 hover:text-white',
         )}
       >
         <span className="relative shrink-0">
-          <Icon size={18} className={cn(active ? 'text-brand-200' : 'text-white/55')} />
+          <Icon size={18} className={cn(active ? 'text-brand-300' : 'text-white/45')} />
           {collapsed && waiting > 0 && (
             <span
-              className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-brand-300 ring-2 ring-brand-900"
+              className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-brand-500 ring-2 ring-ink-950"
               aria-label={`${waiting} waiting`}
             />
           )}
@@ -233,7 +253,7 @@ function SidebarItem({
             <span className="truncate text-left">{item.label}</span>
             {waiting > 0 && (
               <span
-                className="tnum ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-300 px-1 text-2xs font-semibold tracking-normal text-brand-950"
+                className="tnum ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-2xs font-semibold tracking-normal text-white"
                 aria-label={`${waiting} waiting`}
               >
                 {waiting}
@@ -261,15 +281,15 @@ function SidebarItem({
                   cn(
                     'relative flex h-8 items-center rounded-md px-2.5 text-sm transition-colors duration-100',
                     isActive
-                      ? 'bg-white/12 font-medium text-white before:absolute before:-left-[0.8125rem] before:h-4 before:w-0.5 before:rounded-full before:bg-brand-300'
-                      : 'text-white/60 hover:bg-white/8 hover:text-white',
+                      ? 'bg-brand-600/25 font-medium text-white before:absolute before:-left-[0.8125rem] before:h-4 before:w-0.5 before:rounded-full before:bg-brand-400'
+                      : 'text-white/55 hover:bg-white/6 hover:text-white',
                   )
                 }
               >
                 <span className="truncate">{child.label}</span>
                 {child.badge ? (
                   <span
-                    className="tnum ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-300 px-1 text-2xs font-semibold tracking-normal text-brand-950"
+                    className="tnum ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-2xs font-semibold tracking-normal text-white"
                     aria-label={`${child.badge} waiting`}
                   >
                     {child.badge}

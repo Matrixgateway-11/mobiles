@@ -114,7 +114,7 @@ export default function Invitations() {
           <EmptyState
             icon={RiInboxLine}
             title="Nothing waiting"
-            description="Completed onboarding links land here the moment the applicant submits."
+            description="Completed links land here the moment they submit."
             compact
           />
         ) : (

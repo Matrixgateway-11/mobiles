@@ -27,7 +27,7 @@ export default function Dashboard() {
     <>
       <PageHeader
         title="Dashboard"
-        description="Collections, disbursements and bill payments across every channel on your account."
+        description="Collections, disbursements and bill payments."
       />
 
       <section aria-label="Payment channels" className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -66,7 +66,7 @@ export default function Dashboard() {
         <FeatureCard
           icon={RiQrScan2Line}
           title="QR Scan"
-          description="Accept UPI payments against your static QR and reconcile them with a UTR."
+          description="Accept UPI against your static QR, reconciled by UTR."
           state="paused"
           stateLabel="Temporarily closed"
           note="QR collection is closed right now. Submitted payments are still being settled."
@@ -76,7 +76,7 @@ export default function Dashboard() {
         <FeatureCard
           icon={RiSmartphoneLine}
           title="POS"
-          description="Card-present acceptance on a physical terminal, settled into the same wallet."
+          description="Card-present acceptance, settled to the same wallet."
           state="soon"
           stateLabel="Coming soon"
           note="We'll let you know as soon as terminals are available in your region."

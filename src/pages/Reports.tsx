@@ -79,7 +79,7 @@ export default function Reports() {
       <PageHeader
         breadcrumb={[{ label: 'Home', to: '/dashboard' }, { label: 'Reports' }]}
         title="Reports"
-        description="Browse, filter and download transaction reports across payment gateways."
+        description="Filter and download across payment gateways."
       />
 
       <Tabs tabs={SCOPES} value={scope} onChange={setScope} className="mb-5" />

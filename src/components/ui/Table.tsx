@@ -11,7 +11,7 @@ export function TableWrap({ children, className }: { children: ReactNode; classN
 
 export function THead({ children }: { children: ReactNode }) {
   return (
-    <thead className="bg-ink-25">
+    <thead className="bg-ink-50/70">
       <tr className="border-b border-ink-200">{children}</tr>
     </thead>
   )

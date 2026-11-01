@@ -203,7 +203,7 @@ export default function MyTeam() {
       <Card className="mt-4">
         <CardHeader
           title={isAdmin ? 'Accounts' : 'Team members'}
-          description="Rate is the share that comes up to you on everything they collect."
+          description="Rate is the share that comes up to you."
           actions={
             <Button size="sm" icon={RiDownload2Line}>
               Export CSV

@@ -18,7 +18,7 @@ export default function LoadMoney() {
         <EmptyState
           icon={RiBankCardLine}
           title="No active gateways"
-          description="Once a payment gateway is configured for your account it will appear here, ready to accept collections."
+          description="A gateway appears here once it is configured."
           action={
             <Button as={Link} to="/help" variant="primary" icon={RiCustomerService2Line}>
               Request a gateway

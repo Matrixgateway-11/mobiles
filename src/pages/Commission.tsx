@@ -50,7 +50,7 @@ export default function Commission() {
       <PageHeader
         breadcrumb={[{ label: 'Home', to: '/dashboard' }, { label: 'Commission' }]}
         title="Commission"
-        description="What you earn across every service, and the rates those earnings resolve against."
+        description="What you earn, and the rates behind it."
         actions={
           <Button
             variant="primary"
@@ -444,7 +444,7 @@ function StructureTab() {
       <Card>
         <CardHeader
           title="Resolved rates"
-          description="What you earn per service, after your slab and any override from your senior account."
+          description="Per service, after your slab and any override."
         />
         <TableWrap>
           <THead>

@@ -20,7 +20,6 @@ import { Logo } from '@/components/ui/Logo'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Alert } from '@/components/ui/Alert'
-import { Badge } from '@/components/ui/Badge'
 import { Field, Input, FileInput, Checkbox } from '@/components/ui/Field'
 import { DataList, DataItem } from '@/components/ui/DataList'
 import { ROLE_LABEL, type Submission } from '@/data/network'
@@ -106,19 +105,23 @@ export default function PublicOnboarding() {
 
 function Shell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-ink-50">
-      <header className="border-b border-ink-200 bg-white px-4 py-3 lg:px-8">
+    <div className="relative flex min-h-screen flex-col bg-ink-100">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-gradient-to-b from-brand-50 to-transparent"
+        aria-hidden
+      />
+      <header className="relative border-b border-ink-200 bg-white/80 px-4 py-3 backdrop-blur-sm lg:px-8">
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4">
           <Logo variant="dark" />
           <span className="text-sm text-ink-500">Merchant onboarding</span>
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-8 lg:px-8">
+      <main className="relative flex-1 px-4 py-10 lg:px-8">
         <div className="mx-auto w-full max-w-3xl">{children}</div>
       </main>
 
-      <footer className="border-t border-ink-200 bg-white px-4 py-5 lg:px-8">
+      <footer className="relative border-t border-ink-200 bg-white px-4 py-5 lg:px-8">
         <p className="mx-auto w-full max-w-3xl text-sm text-ink-500">
           © {YEAR} Sai Mobiles
           <span className="mx-1.5 text-ink-300">·</span>
@@ -139,7 +142,7 @@ function Notice({
   body: string
 }) {
   return (
-    <Card className="px-6 py-16 text-center">
+    <Card className="px-6 py-16 text-center shadow-md">
       <span
         className="inline-flex size-12 items-center justify-center rounded-xl border border-ink-200 bg-ink-50 text-ink-400"
         aria-hidden
@@ -164,7 +167,7 @@ function Submitted({
   approved: boolean
 }) {
   return (
-    <Card className="px-6 py-16 text-center">
+    <Card className="px-6 py-16 text-center shadow-md">
       <span
         className="inline-flex size-14 items-center justify-center rounded-full bg-success-50 text-success-600"
         aria-hidden
@@ -276,21 +279,22 @@ function Form({ token, role, inviter }: { token: string; role: string; inviter: 
 
   return (
     <>
-      <header className="mb-6">
-        <Badge tone="brand">Onboarding as {role}</Badge>
-        <h1 className="mt-3 text-4xl font-semibold tracking-[-0.03em] text-ink-900">
-          Tell us about yourself
+      <header className="mb-7">
+        <p className="text-sm font-medium text-brand-700">
+          {inviter} invited you to join as a {role.toLowerCase()}
+        </p>
+        <h1 className="mt-2 text-4xl font-semibold tracking-[-0.035em] text-ink-900">
+          Set up your account
         </h1>
-        <p className="mt-1.5 text-md text-ink-500">
-          {inviter} invited you to join Sai Mobiles. It takes about five minutes, and you will need
-          your PAN, Aadhaar and a cancelled cheque.
+        <p className="mt-2 max-w-xl text-md leading-relaxed text-ink-500">
+          Around five minutes. Keep your PAN, Aadhaar and a cancelled cheque to hand.
         </p>
       </header>
 
       <Stepper steps={STEPS} current={step} complete={complete} />
 
-      <Card className="mt-5">
-        <div className="p-5 sm:p-6">
+      <Card className="mt-6 shadow-md">
+        <div className="p-6 sm:p-8">
           {step === 0 && (
             <StepDetails
               values={values}
@@ -312,7 +316,7 @@ function Form({ token, role, inviter }: { token: string; role: string; inviter: 
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-200 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-b-xl border-t border-ink-200 bg-ink-25 px-6 py-4">
           <Button
             icon={RiArrowLeftLine}
             disabled={step === 0}
@@ -358,42 +362,47 @@ function Stepper({
   complete: boolean[]
 }) {
   return (
-    <ol className="flex items-center gap-2">
-      {steps.map((label, index) => {
-        const done = index < current && complete[index]
-        const active = index === current
-        return (
-          <li key={label} className="flex min-w-0 flex-1 items-center gap-2">
-            <span
-              className={cn(
-                'inline-flex size-6 shrink-0 items-center justify-center rounded-full text-2xs font-semibold tracking-normal',
-                done
-                  ? 'bg-success-600 text-white'
-                  : active
-                    ? 'bg-brand-700 text-white'
-                    : 'bg-ink-200 text-ink-600',
-              )}
-            >
-              {done ? <RiCheckLine size={13} /> : index + 1}
-            </span>
-            <span
-              className={cn(
-                'hidden truncate text-sm sm:block',
-                active ? 'font-medium text-ink-900' : 'text-ink-500',
-              )}
-            >
-              {label}
-            </span>
-            {index < steps.length - 1 && (
+    <div>
+      {/* One continuous rail. Four disconnected hairlines read as decoration;
+          a filling bar reads as progress. */}
+      <div className="h-1 overflow-hidden rounded-full bg-ink-200">
+        <div
+          className="h-full rounded-full bg-brand-600 transition-[width] duration-500 ease-out"
+          style={{ width: `${((current + 1) / steps.length) * 100}%` }}
+        />
+      </div>
+
+      <ol className="mt-3 flex items-center justify-between">
+        {steps.map((label, index) => {
+          const done = index < current && complete[index]
+          const active = index === current
+          return (
+            <li key={label} className="flex min-w-0 items-center gap-2">
               <span
-                className={cn('h-px min-w-4 flex-1', done ? 'bg-success-300' : 'bg-ink-200')}
-                aria-hidden
-              />
-            )}
-          </li>
-        )
-      })}
-    </ol>
+                className={cn(
+                  'inline-flex size-5 shrink-0 items-center justify-center rounded-full text-2xs font-semibold tracking-normal transition-colors',
+                  done
+                    ? 'bg-success-600 text-white'
+                    : active
+                      ? 'bg-brand-600 text-white'
+                      : 'bg-ink-200 text-ink-500',
+                )}
+              >
+                {done ? <RiCheckLine size={12} /> : index + 1}
+              </span>
+              <span
+                className={cn(
+                  'hidden truncate text-sm transition-colors sm:block',
+                  active ? 'font-medium text-ink-900' : done ? 'text-ink-600' : 'text-ink-400',
+                )}
+              >
+                {label}
+              </span>
+            </li>
+          )
+        })}
+      </ol>
+    </div>
   )
 }
 
@@ -412,19 +421,14 @@ function Section({
   children: ReactNode
 }) {
   return (
-    <section className="border-ink-100 not-first:mt-6 not-first:border-t not-first:pt-6">
-      <div className="flex items-start gap-3">
-        <span
-          className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"
-          aria-hidden
-        >
-          <Icon size={16} />
+    <section className="border-ink-100 not-first:mt-7 not-first:border-t not-first:pt-7">
+      <div className="flex items-center gap-2.5">
+        <span className="text-brand-600" aria-hidden>
+          <Icon size={17} />
         </span>
-        <div className="min-w-0">
-          <h2 className="text-md font-semibold tracking-[-0.01em] text-ink-900">{title}</h2>
-          {description && <p className="mt-0.5 text-sm text-ink-500">{description}</p>}
-        </div>
+        <h2 className="text-md font-semibold tracking-[-0.01em] text-ink-900">{title}</h2>
       </div>
+      {description && <p className="mt-1 text-sm leading-relaxed text-ink-500">{description}</p>}
       <div className="mt-4">{children}</div>
     </section>
   )
@@ -517,7 +521,7 @@ function StepDetails({
       <Section
         icon={RiMailLine}
         title="Email address"
-        description="Your sign-in link is sent here once you are approved, so it has to be verified."
+        description="We send your sign-in link here, so it has to be verified."
       >
         <div className="flex items-end gap-2">
           <Field label="Email" htmlFor="ob-email" className="min-w-0 flex-1">
@@ -560,9 +564,8 @@ function StepDetails({
                 </Alert>
               ) : (
                 <Alert tone="info" icon={RiInformationLine} className="mb-3">
-                  A six-digit code is on its way to{' '}
-                  <span className="font-medium">{values.email}</span>. It may take a minute, and it
-                  is worth checking spam.
+                  Code sent to <span className="font-medium">{values.email}</span>. Check spam if
+                  it is slow.
                 </Alert>
               )}
 
@@ -601,7 +604,7 @@ function StepDetails({
         <Field
           label="Mobile"
           htmlFor="ob-mobile"
-          hint="10 digits. SMS verification is not switched on yet, so your reviewer will confirm this with you."
+          hint="10 digits. Your reviewer will confirm this with you."
           className="sm:max-w-xs"
         >
           <Input
@@ -629,7 +632,6 @@ function StepIdentity({ values, set, attach }: { values: Values; set: Setter; at
       <Section
         icon={RiBankCardLine}
         title="PAN"
-        description="Checked against the income tax database before your account is created."
       >
         <Field
           label="PAN number"
@@ -702,7 +704,7 @@ function StepIdentity({ values, set, attach }: { values: Values; set: Setter; at
       <Section
         icon={RiCameraLine}
         title="Photograph"
-        description="A clear head-and-shoulders photo, taken in daylight."
+        description="Head and shoulders, taken in daylight."
       >
         <Field label="Photo" hint="Max 3 MB · JPG or PNG" className="sm:max-w-md">
           <FileInput
@@ -725,7 +727,7 @@ function StepBank({ values, set, attach }: { values: Values; set: Setter; attach
       <Section
         icon={RiBankLine}
         title="Settlement account"
-        description="Your collections are credited here, so the account is penny-drop verified."
+        description="Where your settlements are paid."
       >
         <Grid>
           <Field label="Account number" htmlFor="ob-account">
@@ -797,7 +799,7 @@ function StepReview({
         Check before you send
       </h2>
       <p className="mt-1 text-base text-ink-500">
-        You cannot change these once submitted — your reviewer would have to send a fresh link.
+        These cannot be changed after you submit.
       </p>
 
       <ReviewBlock title="Your details" onEdit={() => onEdit(0)}>

@@ -66,7 +66,7 @@ export default function AddUser() {
           { label: 'Add user' },
         ]}
         title="Add user"
-        description="Onboard someone into your downline — the same verification a Sai Mobiles merchant goes through."
+        description="Same verification any Sai Mobiles merchant goes through."
         aside={
           <IconButton
             icon={RiArrowLeftLine}
@@ -225,7 +225,7 @@ function FullOnboarding({ roles }: { roles: InviteRole[] }) {
         <FormSection
           icon={RiBankCardLine}
           title="PAN verification"
-          description="Checked against the income tax database before the account is created."
+          description="Verified before the account is created."
         >
           <InlineAction action={<Button disabled={pan.length !== 10}>Verify</Button>}>
             <Field label="PAN number" htmlFor="user-pan">
@@ -285,7 +285,7 @@ function FullOnboarding({ roles }: { roles: InviteRole[] }) {
         <FormSection
           icon={RiBankLine}
           title="Bank details"
-          description="Settlements are credited to this account, so it is penny-drop verified."
+          description="Where settlements are paid. Verified by penny drop."
         >
           <Grid>
             <Field label="Account number" htmlFor="user-account">
@@ -557,7 +557,7 @@ function LinkOnboarding({ roles }: { roles: InviteRole[] }) {
       <Card>
         <CardHeader
           title="Links you have sent"
-          description="A link expires after seven days if nobody fills it in."
+          description="Links expire after seven days."
         />
         {links.length === 0 ? (
           <EmptyState
