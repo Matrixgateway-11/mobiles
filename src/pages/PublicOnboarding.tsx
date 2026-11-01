@@ -25,6 +25,7 @@ import { Field, Input, FileInput, Checkbox } from '@/components/ui/Field'
 import { DataList, DataItem } from '@/components/ui/DataList'
 import { ROLE_LABEL, type Submission } from '@/data/network'
 import { useNetwork, invitationByToken, accountById, submitOnboarding } from '@/lib/network'
+import { sendEmailCode, confirmEmailCode, emailIsReal } from '@/lib/email-otp'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
@@ -174,9 +175,9 @@ function Submitted({
       <p className="mx-auto mt-3 max-w-md text-md leading-relaxed text-ink-600">
         {decided
           ? approved
-            ? 'Your account is live. Check your email for your merchant code and MPIN, then sign in.'
+            ? 'Your account is live. Check your email for the link to set your password, then sign in.'
             : 'This application has been closed. Contact whoever invited you if you think that is wrong.'
-          : `Your details are with ${reviewer} for review. You will get an email with your MPIN once the account is approved.`}
+          : `Your details are with ${reviewer} for review. Once the account is approved you will get an email with a link to set your password.`}
       </p>
       {name && !decided && (
         <p className="mt-6 text-sm text-ink-500">
@@ -431,13 +432,48 @@ function StepDetails({
   emailVerified: boolean
   onVerified: () => void
 }) {
-  const [sentCode, setSentCode] = useState('')
+  const [sent, setSent] = useState(false)
+  // Only ever set when there is no project to send real mail through.
+  const [localCode, setLocalCode] = useState('')
   const [entered, setEntered] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [codeError, setCodeError] = useState('')
 
-  const send = () => {
-    const code = String(Math.floor(100000 + Math.random() * 900000))
-    setSentCode(code)
+  const send = async () => {
+    setBusy(true)
+    setCodeError('')
     setEntered('')
+    try {
+      if (emailIsReal()) {
+        await sendEmailCode(values.email)
+        setLocalCode('')
+      } else {
+        setLocalCode(String(Math.floor(100000 + Math.random() * 900000)))
+      }
+      setSent(true)
+    } catch (caught) {
+      setCodeError(caught instanceof Error ? caught.message : 'Could not send the code.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const confirm = async (code: string) => {
+    setBusy(true)
+    setCodeError('')
+    try {
+      if (emailIsReal()) {
+        await confirmEmailCode(values.email, code)
+      } else if (code !== localCode) {
+        throw new Error('That code does not match.')
+      }
+      onVerified()
+    } catch (caught) {
+      setCodeError(caught instanceof Error ? caught.message : 'Could not check that code.')
+      setEntered('')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -466,7 +502,7 @@ function StepDetails({
       <Section
         icon={RiMailLine}
         title="Email address"
-        description="We send your MPIN here once you are approved, so it has to be verified."
+        description="Your sign-in link is sent here once you are approved, so it has to be verified."
       >
         <div className="flex items-end gap-2">
           <Field label="Email" htmlFor="ob-email" className="min-w-0 flex-1">
@@ -474,19 +510,25 @@ function StepDetails({
               id="ob-email"
               type="email"
               value={values.email}
-              disabled={emailVerified}
+              disabled={emailVerified || busy}
               onChange={(event) => set('email', event.target.value)}
               placeholder="name@example.com"
             />
           </Field>
           <Button
-            disabled={!values.email.includes('@') || emailVerified}
-            onClick={send}
+            disabled={!values.email.includes('@') || emailVerified || busy}
+            onClick={() => void send()}
             className="shrink-0"
           >
-            {sentCode ? 'Resend code' : 'Send code'}
+            {busy ? 'Sending…' : sent ? 'Resend code' : 'Send code'}
           </Button>
         </div>
+
+        {codeError && !emailVerified && (
+          <Alert tone="danger" className="mt-3">
+            {codeError}
+          </Alert>
+        )}
 
         {emailVerified ? (
           <p className="mt-3 flex items-center gap-1.5 text-base font-medium text-success-700">
@@ -494,12 +536,21 @@ function StepDetails({
             Email verified
           </p>
         ) : (
-          sentCode && (
+          sent && (
             <div className="mt-4">
-              <Alert tone="info" icon={RiInformationLine} className="mb-3">
-                Email delivery is not wired up in this build. Your code is{' '}
-                <span className="tnum font-semibold">{sentCode}</span>.
-              </Alert>
+              {localCode ? (
+                <Alert tone="info" icon={RiInformationLine} className="mb-3">
+                  No mail provider is configured, so the code is shown here instead:{' '}
+                  <span className="tnum font-semibold">{localCode}</span>.
+                </Alert>
+              ) : (
+                <Alert tone="info" icon={RiInformationLine} className="mb-3">
+                  A six-digit code is on its way to{' '}
+                  <span className="font-medium">{values.email}</span>. It may take a minute, and it
+                  is worth checking spam.
+                </Alert>
+              )}
+
               <div className="flex items-end gap-2">
                 <Field label="Verification code" htmlFor="ob-code" className="w-40">
                   <Input
@@ -508,22 +559,24 @@ function StepDetails({
                     maxLength={6}
                     className="tnum"
                     value={entered}
-                    onChange={(event) => setEntered(event.target.value.replace(/\D/g, ''))}
+                    disabled={busy}
+                    onChange={(event) => {
+                      const next = event.target.value.replace(/\D/g, '')
+                      setEntered(next)
+                      if (next.length === 6) void confirm(next)
+                    }}
                     placeholder="6 digits"
                   />
                 </Field>
                 <Button
                   variant="primary"
-                  disabled={entered !== sentCode}
-                  onClick={onVerified}
+                  disabled={entered.length !== 6 || busy}
+                  onClick={() => void confirm(entered)}
                   className="shrink-0"
                 >
-                  Verify
+                  {busy ? 'Checking…' : 'Verify'}
                 </Button>
               </div>
-              {entered.length === 6 && entered !== sentCode && (
-                <p className="mt-2 text-sm text-danger-700">That code does not match.</p>
-              )}
             </div>
           )
         )}
