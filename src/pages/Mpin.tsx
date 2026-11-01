@@ -1,16 +1,21 @@
 import { useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { RiArrowLeftLine, RiShieldKeyholeLine } from '@remixicon/react'
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { Button } from '@/components/ui/Button'
+import { completeSignIn, signOut } from '@/lib/session'
 import { cn } from '@/lib/cn'
 
 const LENGTH = 6
 
 export default function Mpin() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [digits, setDigits] = useState<string[]>(Array(LENGTH).fill(''))
   const inputs = useRef<(HTMLInputElement | null)[]>([])
+
+  // Land them where they were originally headed, not always the dashboard.
+  const from = (location.state as { from?: string } | null)?.from ?? '/dashboard'
 
   const complete = digits.every(Boolean)
 
@@ -50,7 +55,9 @@ export default function Mpin() {
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault()
-    if (complete) navigate('/dashboard')
+    if (!complete) return
+    completeSignIn()
+    navigate(from, { replace: true })
   }
 
   return (
@@ -117,6 +124,7 @@ export default function Mpin() {
 
       <Link
         to="/login"
+        onClick={signOut}
         className="mt-6 inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-ink-500 transition-colors hover:text-ink-900"
       >
         <RiArrowLeftLine size={15} />

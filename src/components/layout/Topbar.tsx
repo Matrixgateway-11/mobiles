@@ -20,6 +20,7 @@ import {
 } from '@remixicon/react'
 import { IconButton } from '@/components/ui/Button'
 import { merchant } from '@/data/mock'
+import { signOut } from '@/lib/session'
 import { money } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
@@ -283,7 +284,15 @@ function UserMenu() {
             </MenuLink>
           </div>
           <div className="border-t border-ink-100 p-1.5">
-            <MenuLink to="/login" icon={RiLogoutBoxRLine} tone="danger" onSelect={dismiss}>
+            <MenuLink
+              to="/login"
+              icon={RiLogoutBoxRLine}
+              tone="danger"
+              onSelect={() => {
+                signOut()
+                dismiss()
+              }}
+            >
               Sign out
             </MenuLink>
           </div>

@@ -1,19 +1,27 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { RiEyeLine, RiEyeOffLine, RiArrowRightLine } from '@remixicon/react'
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Field'
+import { startSignIn } from '@/lib/session'
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [showPassword, setShowPassword] = useState(false)
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
 
+  // Where the gate turned them away from, carried through to the MPIN step.
+  const from = (location.state as { from?: string } | null)?.from
+  const ready = Boolean(identifier.trim() && password)
+
   const submit = (event: React.FormEvent) => {
     event.preventDefault()
-    navigate('/mpin')
+    if (!ready) return
+    startSignIn()
+    navigate('/mpin', { state: { from } })
   }
 
   return (
@@ -68,7 +76,14 @@ export default function Login() {
           </Link>
         </div>
 
-        <Button type="submit" variant="primary" size="lg" iconAfter={RiArrowRightLine} className="w-full">
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          iconAfter={RiArrowRightLine}
+          disabled={!ready}
+          className="w-full"
+        >
           Continue
         </Button>
       </form>

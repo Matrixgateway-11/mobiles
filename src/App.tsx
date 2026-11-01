@@ -1,6 +1,8 @@
-import { Suspense, lazy } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { Suspense, lazy, type ReactElement } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { PublicLayout } from '@/components/layout/PublicLayout'
+import { getStage } from '@/lib/session'
 
 import Login from '@/pages/Login'
 import Mpin from '@/pages/Mpin'
@@ -43,16 +45,79 @@ function PageSkeleton() {
   )
 }
 
+/* Three gates, so every route resolves to the screen that actually applies:
+   the console needs a finished sign-in, the MPIN step needs a started one, and
+   sign-in itself is pointless once you are already in. */
+
+function RequireSession({ children }: { children: ReactElement }) {
+  const location = useLocation()
+  if (getStage() !== 'signed-in') {
+    // Remember where they were headed so the MPIN step can land them there.
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
+  }
+  return children
+}
+
+function RequireMpinStage({ children }: { children: ReactElement }) {
+  const stage = getStage()
+  if (stage === 'signed-in') return <Navigate to="/dashboard" replace />
+  if (stage !== 'awaiting-mpin') return <Navigate to="/login" replace />
+  return children
+}
+
+function RedirectIfSignedIn({ children }: { children: ReactElement }) {
+  if (getStage() === 'signed-in') return <Navigate to="/dashboard" replace />
+  return children
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/mpin" element={<Mpin />} />
+        <Route
+          path="/login"
+          element={
+            <RedirectIfSignedIn>
+              <Login />
+            </RedirectIfSignedIn>
+          }
+        />
+        <Route
+          path="/mpin"
+          element={
+            <RequireMpinStage>
+              <Mpin />
+            </RequireMpinStage>
+          }
+        />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/forgot-mpin" element={<ForgotMpin />} />
 
-        <Route element={<AppLayout />}>
+        {/* The sign-in page links to these, so they stay outside the gate. */}
+        <Route
+          path="/terms"
+          element={
+            <PublicLayout>
+              <Terms />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/privacy"
+          element={
+            <PublicLayout>
+              <Privacy />
+            </PublicLayout>
+          }
+        />
+
+        <Route
+          element={
+            <RequireSession>
+              <AppLayout />
+            </RequireSession>
+          }
+        >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
 
@@ -91,8 +156,6 @@ export default function App() {
           <Route path="/tickets" element={<Tickets />} />
           <Route path="/help" element={<Help />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/privacy" element={<Privacy />} />
 
           <Route path="*" element={<NotFound />} />
         </Route>
