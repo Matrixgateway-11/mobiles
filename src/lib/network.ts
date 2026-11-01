@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { useAccountId } from '@/lib/session'
+import { useAuthState } from '@/lib/auth'
+import { isLive } from '@/lib/supabase'
 import { APP_URL } from '@/lib/config'
 import {
   ADMIN_ID,
@@ -100,11 +102,21 @@ export function useNetwork() {
 
 export const getNetwork = () => state
 
-/** The account the console is being operated as. Falls back to the admin if
-    the stored id no longer exists — a reset leaves stale ids behind. */
+/** Who the console is being operated as.
+
+    Against a real project this is the signed-in user's profile, full stop —
+    the role comes from the database and there is nothing to switch. On
+    fixtures it falls back to the selected account, because that is the only
+    way to review three panels without three real logins. */
 export function useCurrentAccount(): Account {
   const network = useNetwork()
   const id = useAccountId()
+  const { profile } = useAuthState()
+
+  if (isLive()) {
+    return profile ?? network.accounts[0]
+  }
+
   return (
     network.accounts.find((a) => a.id === id) ??
     network.accounts.find((a) => a.id === ADMIN_ID) ??
@@ -198,8 +210,10 @@ export function approveInvitation(token: string, commissionPercent: number) {
   const parentId = inviter?.id ?? ADMIN_ID
   const mpin = issueMpin()
 
+  const code = nextAccountId(state.accounts)
   const account: Account = {
-    id: nextAccountId(state.accounts),
+    id: code,
+    merchantCode: code,
     name: invitation.submission.fullName,
     email: invitation.submission.email,
     mobile: invitation.submission.mobile,

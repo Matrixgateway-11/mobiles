@@ -24,6 +24,8 @@ import { merchant } from '@/data/mock'
 import { ROLE_LABEL } from '@/data/network'
 import { useCurrentAccount, useNetwork } from '@/lib/network'
 import { setAccountId, signOut } from '@/lib/session'
+import { signOutOfSupabase } from '@/lib/auth'
+import { isLive } from '@/lib/supabase'
 import { money } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
@@ -257,8 +259,9 @@ function UserMenu() {
             </p>
           </div>
 
-          {/* Prototype affordance: three panels, one browser. A real build
-              takes the role from the signed-in session instead. */}
+          {/* Fixtures only. Once a project is configured the role comes from
+              the signed-in session and there is nothing to switch. */}
+          {!isLive() && (
           <div className="border-b border-ink-100 p-1.5">
             <button
               type="button"
@@ -304,6 +307,7 @@ function UserMenu() {
               </ul>
             )}
           </div>
+          )}
 
           <div className="p-1.5">
             <button
@@ -356,6 +360,7 @@ function UserMenu() {
               icon={RiLogoutBoxRLine}
               tone="danger"
               onSelect={() => {
+                void signOutOfSupabase()
                 signOut()
                 dismiss()
               }}

@@ -105,6 +105,26 @@ appears in the hierarchy.
 and the dialog shows what it means in rupees — at 1%, ₹1,000 of ₹1,00,000 collected
 goes up and ₹99,000 stays.
 
+## Authentication
+
+Supabase Auth, email and password. The password is hashed and verified by
+Supabase; nothing in this repo ever handles a credential. The signed-in user's
+profile decides the role, so admin, distributor and retailer are three views of
+the same console rather than three builds.
+
+**There is no second factor yet, and that is a deliberate pause rather than an
+oversight.** The plan was password plus a one-time code by email, but Supabase
+will not *enforce* an email OTP as a second factor: `signInWithOtp` is a primary
+sign-in method, and anyone holding the publishable key can call it directly, so
+layering it on top of a password in the client would look like two factors
+while being one. The options that are genuinely enforced are TOTP, which
+Supabase gates at the token level with `aal2` and which RLS can require, or a
+custom flow behind an edge function with its own SMTP. That decision is open.
+
+Until a project is configured the console runs on fixtures and the sign-in form
+is a doorway, not a check — `src/lib/config.ts` decides which, and the account
+switcher in the user menu only appears in that mode.
+
 ## State
 
 `src/lib/network.ts` is the single seam for persistence. Accounts and invitations

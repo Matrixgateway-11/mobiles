@@ -4,10 +4,12 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { PublicLayout } from '@/components/layout/PublicLayout'
 import { getStage } from '@/lib/session'
 import { useCurrentAccount } from '@/lib/network'
+import { AuthProvider } from '@/lib/AuthContext'
+import { useAuthState } from '@/lib/auth'
+import { isLive } from '@/lib/supabase'
 
 import Login from '@/pages/Login'
-import Mpin from '@/pages/Mpin'
-import { ForgotPassword, ForgotMpin } from '@/pages/ForgotCredential'
+import { ForgotPassword } from '@/pages/ForgotCredential'
 
 import Dashboard from '@/pages/Dashboard'
 import Overview from '@/pages/Overview'
@@ -52,29 +54,72 @@ function PageSkeleton() {
   )
 }
 
-/* Three gates, so every route resolves to the screen that actually applies:
-   the console needs a finished sign-in, the MPIN step needs a started one, and
-   sign-in itself is pointless once you are already in. */
+/* Route gates.
+
+   Against a real project the only question is whether Supabase has a session.
+   On fixtures it falls back to the local stage, so the console stays
+   reviewable before the backend is wired in. */
+
+function Splash() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-ink-50">
+      <p className="text-base text-ink-500">Checking your session…</p>
+    </div>
+  )
+}
+
+/** Signed in to Supabase, but nobody has onboarded this user. Better to say so
+    than to drop them into a console with no identity. */
+function NoProfile() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4">
+      <div className="max-w-md rounded-xl border border-ink-200 bg-white p-8 text-center shadow-xs">
+        <h1 className="text-2xl font-semibold tracking-[-0.02em] text-ink-900">
+          No account attached
+        </h1>
+        <p className="mt-2 text-base leading-relaxed text-ink-500">
+          You are signed in, but this login is not linked to a merchant account yet. Whoever
+          invited you needs to approve the application first.
+        </p>
+        <a
+          href="/login"
+          className="mt-5 inline-flex h-9 items-center rounded-lg border border-ink-200 px-3.5 text-base font-medium text-ink-800 hover:bg-ink-50"
+        >
+          Back to sign in
+        </a>
+      </div>
+    </div>
+  )
+}
 
 function RequireSession({ children }: { children: ReactElement }) {
   const location = useLocation()
+  const { session, profile, loading } = useAuthState()
+
+  if (isLive()) {
+    if (loading) return <Splash />
+    if (!session) {
+      return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
+    }
+    if (!profile) return <NoProfile />
+    return children
+  }
+
   if (getStage() !== 'signed-in') {
-    // Remember where they were headed so the MPIN step can land them there.
     return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
   }
   return children
 }
 
-function RequireMpinStage({ children }: { children: ReactElement }) {
-  const stage = getStage()
-  if (stage === 'signed-in') return <Navigate to="/dashboard" replace />
-  if (stage !== 'awaiting-mpin') return <Navigate to="/login" replace />
-  return children
-}
-
 function RedirectIfSignedIn({ children }: { children: ReactElement }) {
-  if (getStage() === 'signed-in') return <Navigate to="/dashboard" replace />
-  return children
+  const { session, loading } = useAuthState()
+
+  if (isLive()) {
+    if (loading) return <Splash />
+    return session ? <Navigate to="/dashboard" replace /> : children
+  }
+
+  return getStage() === 'signed-in' ? <Navigate to="/dashboard" replace /> : children
 }
 
 /** User Management does not exist for a retailer — there is nobody below them
@@ -88,7 +133,8 @@ function RequireManager({ children }: { children: ReactElement }) {
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <AuthProvider>
+        <Routes>
         <Route
           path="/login"
           element={
@@ -97,16 +143,7 @@ export default function App() {
             </RedirectIfSignedIn>
           }
         />
-        <Route
-          path="/mpin"
-          element={
-            <RequireMpinStage>
-              <Mpin />
-            </RequireMpinStage>
-          }
-        />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/forgot-mpin" element={<ForgotMpin />} />
 
         {/* Reached by token alone — the applicant has no account yet. */}
         <Route
@@ -208,7 +245,8 @@ export default function App() {
 
           <Route path="*" element={<NotFound />} />
         </Route>
-      </Routes>
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   )
 }

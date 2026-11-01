@@ -80,6 +80,3 @@ export function ForgotPassword() {
   return <ForgotCredential kind="password" />
 }
 
-export function ForgotMpin() {
-  return <ForgotCredential kind="mpin" />
-}

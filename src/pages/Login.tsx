@@ -4,7 +4,10 @@ import { RiEyeLine, RiEyeOffLine, RiArrowRightLine } from '@remixicon/react'
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Field'
-import { startSignIn } from '@/lib/session'
+import { Alert } from '@/components/ui/Alert'
+import { startSignIn, completeSignIn } from '@/lib/session'
+import { signInWithPassword } from '@/lib/auth'
+import { isLive } from '@/lib/supabase'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -12,16 +15,41 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
 
   // Where the gate turned them away from, carried through to the MPIN step.
   const from = (location.state as { from?: string } | null)?.from
   const ready = Boolean(identifier.trim() && password)
 
-  const submit = (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!ready) return
-    startSignIn()
-    navigate('/mpin', { state: { from } })
+    if (!ready || busy) return
+    setError('')
+
+    // No project configured: the console runs on fixtures, so the form is a
+    // doorway rather than a check.
+    if (!isLive()) {
+      startSignIn()
+      completeSignIn()
+      navigate(from ?? '/dashboard', { replace: true })
+      return
+    }
+
+    setBusy(true)
+    try {
+      await signInWithPassword(identifier, password)
+      navigate(from ?? '/dashboard', { replace: true })
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Could not sign you in.'
+      setError(
+        /invalid login credentials/i.test(message)
+          ? 'That email and password do not match an account.'
+          : message,
+      )
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -31,8 +59,13 @@ export default function Login() {
         Manage credit card bill payments from one console.
       </p>
 
-      <form className="mt-8 space-y-4" onSubmit={submit}>
-        <Field label="Email or mobile number" htmlFor="identifier">
+      <form className="mt-8 space-y-4" onSubmit={(event) => void submit(event)}>
+        {error && (
+          <Alert tone="danger" className="mb-2">
+            {error}
+          </Alert>
+        )}
+        <Field label="Email address" htmlFor="identifier">
           <Input
             id="identifier"
             name="identifier"
@@ -81,10 +114,10 @@ export default function Login() {
           variant="primary"
           size="lg"
           iconAfter={RiArrowRightLine}
-          disabled={!ready}
+          disabled={!ready || busy}
           className="w-full"
         >
-          Continue
+          {busy ? 'Signing in…' : 'Continue'}
         </Button>
       </form>
 

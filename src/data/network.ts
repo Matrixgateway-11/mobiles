@@ -34,7 +34,11 @@ export const CAN_APPROVE: Record<Role, boolean> = {
 }
 
 export type Account = {
+  /** The auth user's uuid once live; the merchant code in the fixtures. It is
+      what every relationship keys off, and it is never shown. */
   id: string
+  /** What people read and quote at each other: MER2026… */
+  merchantCode: string
   name: string
   email: string
   mobile: string
@@ -55,6 +59,7 @@ export const ADMIN_ID = 'ADM202600001'
 export const seedAccounts: Account[] = [
   {
     id: ADMIN_ID,
+    merchantCode: ADMIN_ID,
     name: 'SAI MOBILES HQ',
     email: 'admin@saimobiles.in',
     mobile: '9025232475',
@@ -69,6 +74,7 @@ export const seedAccounts: Account[] = [
   },
   {
     id: 'MER202604654',
+    merchantCode: 'MER202604654',
     name: 'PENNEARASSY',
     email: 'saimobilespondy@gmail.com',
     mobile: '9025232475',
@@ -83,6 +89,7 @@ export const seedAccounts: Account[] = [
   },
   {
     id: 'MER202605120',
+    merchantCode: 'MER202605120',
     name: 'ARUN TRADERS',
     email: 'arun.traders@gmail.com',
     mobile: '9842277310',
@@ -97,6 +104,7 @@ export const seedAccounts: Account[] = [
   },
   {
     id: 'MER202608112',
+    merchantCode: 'MER202608112',
     name: 'RAMAN VENKATESAN',
     email: 'raman.venkatesan@gmail.com',
     mobile: '9843122087',
@@ -111,6 +119,7 @@ export const seedAccounts: Account[] = [
   },
   {
     id: 'MER202608456',
+    merchantCode: 'MER202608456',
     name: 'METTUR MUBARAK JEEWAS',
     email: 'mubarak.jeewas@gmail.com',
     mobile: '9025771340',
@@ -125,6 +134,7 @@ export const seedAccounts: Account[] = [
   },
   {
     id: 'MER202609903',
+    merchantCode: 'MER202609903',
     name: 'S NAGARADJANE',
     email: 'nagaradjane.s@gmail.com',
     mobile: '9367605320',
@@ -139,6 +149,7 @@ export const seedAccounts: Account[] = [
   },
   {
     id: 'MER202610554',
+    merchantCode: 'MER202610554',
     name: 'D RAMKUMAR',
     email: 'ramkumar.d@gmail.com',
     mobile: '6381295496',
@@ -153,6 +164,7 @@ export const seedAccounts: Account[] = [
   },
   {
     id: 'MER202609341',
+    merchantCode: 'MER202609341',
     name: 'K PRABAKARAN',
     email: 'prabakaran.k@gmail.com',
     mobile: '9080455321',
@@ -167,6 +179,7 @@ export const seedAccounts: Account[] = [
   },
   {
     id: 'MER202609477',
+    merchantCode: 'MER202609477',
     name: 'T ANBUSELVAM',
     email: 'anbuselvam.t@gmail.com',
     mobile: '9566310224',
