@@ -18,7 +18,26 @@ export type AuthState = {
   profile: Account | null
   /** Signed in, but with no profile row — an auth user nobody onboarded. */
   orphaned: boolean
+  /** Supabase records how far this session got: aal1 is password only, aal2
+      means a second factor verified. It rides in the token, which is why RLS
+      can act on it. */
+  aal: 'aal1' | 'aal2' | null
   loading: boolean
+}
+
+/** The assurance level, read straight off the access token rather than asked
+    for over the network — it is a claim, not a lookup. */
+function readAal(session: Session | null): 'aal1' | 'aal2' | null {
+  if (!session) return null
+  try {
+    const [, payload] = session.access_token.split('.')
+    const claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))) as {
+      aal?: string
+    }
+    return claims.aal === 'aal2' ? 'aal2' : 'aal1'
+  } catch {
+    return 'aal1'
+  }
 }
 
 /** The database row, in the shape the console already speaks. The uuid is the
@@ -56,7 +75,7 @@ export async function signOutOfSupabase() {
   await client().auth.signOut()
 }
 
-async function fetchProfile(userId: string): Promise<Account | null> {
+export async function fetchProfile(userId: string): Promise<Account | null> {
   const { data, error } = await client()
     .from('profiles')
     .select('*')
@@ -74,6 +93,7 @@ export function useAuth(): AuthState {
     session: null,
     profile: null,
     orphaned: false,
+    aal: null,
     loading: isLive(),
   })
 
@@ -85,18 +105,24 @@ export function useAuth(): AuthState {
     const load = async (session: Session | null) => {
       if (!session) {
         if (!cancelled) {
-          setState({ session: null, profile: null, orphaned: false, loading: false })
+          setState({ session: null, profile: null, orphaned: false, aal: null, loading: false })
         }
         return
       }
       try {
         const profile = await fetchProfile(session.user.id)
         if (!cancelled) {
-          setState({ session, profile, orphaned: profile === null, loading: false })
+          setState({
+            session,
+            profile,
+            orphaned: profile === null,
+            aal: readAal(session),
+            loading: false,
+          })
         }
       } catch {
         if (!cancelled) {
-          setState({ session, profile: null, orphaned: true, loading: false })
+          setState({ session, profile: null, orphaned: true, aal: readAal(session), loading: false })
         }
       }
     }
@@ -120,7 +146,13 @@ export function useAuth(): AuthState {
    every component asking who is signed in opens its own listener and re-fetches
    the profile. */
 
-const EMPTY: AuthState = { session: null, profile: null, orphaned: false, loading: false }
+const EMPTY: AuthState = {
+  session: null,
+  profile: null,
+  orphaned: false,
+  aal: null,
+  loading: false,
+}
 
 export const AuthContext = createContext<AuthState>(EMPTY)
 

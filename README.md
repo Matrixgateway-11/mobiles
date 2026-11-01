@@ -107,30 +107,27 @@ goes up and ₹99,000 stays.
 
 ## Authentication
 
-Supabase Auth, one credential per account. The admin signs in with a password;
-distributors and retailers sign in with the 6-digit MPIN issued when their
-application is approved. Both are the same thing to Supabase — a password it
-hashes and verifies server-side — so the sign-in screen only changes the input,
-never the request. The mode is picked by the person signing in rather than
-looked up from the email address, which would tell anyone which addresses
-exist.
+Supabase Auth. One screen: email and password, Continue. Where you go next
+depends on what the account still owes — the admin goes straight to the
+console; a distributor or retailer meets a six-digit screen that submits itself
+on the last digit, with a QR to scan the first time.
 
-The project allows this: minimum password length 6, no character requirements.
+**The six digits are TOTP, and that is the whole point.** Supabase records how
+far a session got in the token itself: `aal1` is password only, `aal2` means a
+factor verified. `0005_require_mfa.sql` makes RLS refuse `aal1` for everything
+except reading your own profile — which the app needs before it can know which
+screen you owe. So skipping the screen and calling the API with the token you
+already hold returns nothing. A code emailed and checked in the browser could
+not do that: the session is already valid by then, and the second screen would
+be a page the attacker simply does not open.
 
-**What an MPIN is worth, stated plainly.** Six digits is a million
-combinations. Supabase rate-limits the auth endpoint, which makes online
-guessing slow rather than impossible, and the code is static until someone
-reissues it. It is weaker than a password and much weaker than a second factor,
-and it is a deliberate trade for merchants who will not install an app.
+The admin is exempt for now, by decision. Removing the `is_admin()` branch from
+`mfa_ok()` closes it.
 
-**Second factor: TOTP, deferred.** It is enabled in the project and free, and
-it is the only second factor Supabase actually enforces — the assurance level
-rides in the JWT as `aal2`, which RLS can require. An email OTP layered on a
-password in the client cannot be enforced that way: `signInWithOtp` is a
-primary sign-in method and anyone holding the publishable key can call it
-directly, so it would look like two factors while being one. When TOTP lands it
-starts with the admin, and the enrolment screen needs an admin-side reset for
-lost phones or it becomes a support queue.
+**Still missing: an admin-side reset.** Supabase only lets a user unenroll
+their own factor, so a lost phone currently means a locked account. That needs
+an edge function with the service role, and it should land before anyone
+outside this team is onboarded.
 
 Until a project is configured the console runs on fixtures and the sign-in form
 is a doorway, not a check — `src/lib/config.ts` decides which, and the account

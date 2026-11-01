@@ -6,6 +6,7 @@ import { getStage } from '@/lib/session'
 import { useCurrentAccount } from '@/lib/network'
 import { AuthProvider } from '@/lib/AuthContext'
 import { useAuthState } from '@/lib/auth'
+import { requiresTotp } from '@/lib/mfa'
 import { isLive } from '@/lib/supabase'
 
 import Login from '@/pages/Login'
@@ -35,6 +36,7 @@ const Commission = lazy(() => import('@/pages/Commission'))
 // The applicant's form is never opened by signed-in staff, and the invitations
 // inbox only by the two roles that can onboard — neither belongs in the chunk
 // every page pays for.
+const TwoFactor = lazy(() => import('@/pages/TwoFactor'))
 const PublicOnboarding = lazy(() => import('@/pages/PublicOnboarding'))
 const Invitations = lazy(() => import('@/pages/Invitations'))
 
@@ -94,7 +96,7 @@ function NoProfile() {
 
 function RequireSession({ children }: { children: ReactElement }) {
   const location = useLocation()
-  const { session, profile, loading } = useAuthState()
+  const { session, profile, aal, loading } = useAuthState()
 
   if (isLive()) {
     if (loading) return <Splash />
@@ -102,6 +104,11 @@ function RequireSession({ children }: { children: ReactElement }) {
       return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
     }
     if (!profile) return <NoProfile />
+    // The password alone is not enough for anyone who owes a second factor.
+    // RLS refuses them anyway; this is so they meet the screen, not a 403.
+    if (requiresTotp(profile.role) && aal !== 'aal2') {
+      return <Navigate to="/two-factor" replace />
+    }
     return children
   }
 
@@ -144,6 +151,14 @@ export default function App() {
           }
         />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route
+          path="/two-factor"
+          element={
+            <Suspense fallback={null}>
+              <TwoFactor />
+            </Suspense>
+          }
+        />
 
         {/* Reached by token alone — the applicant has no account yet. */}
         <Route

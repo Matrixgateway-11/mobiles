@@ -14,6 +14,7 @@ export function PinInput({
   disabled = false,
   autoFocus = false,
   label,
+  onComplete,
 }: {
   length?: number
   value: string
@@ -21,13 +22,20 @@ export function PinInput({
   disabled?: boolean
   autoFocus?: boolean
   label: string
+  /** Fires the moment the last digit lands. A six-digit code should not also
+      need a button hunted for. */
+  onComplete?: (value: string) => void
 }) {
   const inputs = useRef<(HTMLInputElement | null)[]>([])
   const digits = Array.from({ length }, (_, i) => value[i] ?? '')
 
   const focus = (index: number) => inputs.current[Math.max(0, Math.min(index, length - 1))]?.focus()
 
-  const write = (next: string) => onChange(next.replace(/\D/g, '').slice(0, length))
+  const write = (raw: string) => {
+    const next = raw.replace(/\D/g, '').slice(0, length)
+    onChange(next)
+    if (next.length === length) onComplete?.(next)
+  }
 
   const handleChange = (index: number, raw: string) => {
     const typed = raw.replace(/\D/g, '')
