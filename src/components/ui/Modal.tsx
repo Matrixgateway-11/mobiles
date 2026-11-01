@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useOverlayLayer } from '@/lib/overlay-stack'
 import { createPortal } from 'react-dom'
 import { RiCloseLine } from '@remixicon/react'
 import { cn } from '@/lib/cn'
@@ -32,12 +33,14 @@ export function Modal({
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
+  const isTopmost = useOverlayLayer(open)
 
   useEffect(() => {
     if (!open) return
 
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      // A viewer opened on top of this dialog owns Escape until it closes.
+      if (event.key === 'Escape' && isTopmost()) onClose()
     }
     document.addEventListener('keydown', onKey)
 
@@ -49,7 +52,7 @@ export function Modal({
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = overflow
     }
-  }, [open, onClose])
+  }, [open, onClose, isTopmost])
 
   if (!open) return null
 

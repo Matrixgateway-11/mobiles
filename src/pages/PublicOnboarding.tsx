@@ -26,6 +26,8 @@ import { DataList, DataItem } from '@/components/ui/DataList'
 import { ROLE_LABEL, type Submission } from '@/data/network'
 import { useNetwork, invitationByToken, accountById, submitOnboarding } from '@/lib/network'
 import { sendEmailCode, confirmEmailCode, emailIsReal } from '@/lib/email-otp'
+import { captureDocument, type UploadedDoc } from '@/lib/documents'
+import type { DocKind } from '@/types/database'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
@@ -216,11 +218,23 @@ const empty = {
 function Form({ token, role, inviter }: { token: string; role: string; inviter: string }) {
   const [step, setStep] = useState(0)
   const [values, setValues] = useState(empty)
+  const [documents, setDocuments] = useState<UploadedDoc[]>([])
   const [emailVerified, setEmailVerified] = useState(false)
   const [agreed, setAgreed] = useState(false)
 
   const set = <K extends keyof typeof empty>(key: K, value: string) =>
     setValues((current) => ({ ...current, [key]: value }))
+
+  /* Reading and scaling the file happens here rather than at submit, so a
+     slow phone photo is dealt with while they are still filling the form. */
+  const attach = async (kind: DocKind, file: File | null) => {
+    if (!file) {
+      setDocuments((current) => current.filter((doc) => doc.kind !== kind))
+      return
+    }
+    const captured = await captureDocument(kind, file)
+    setDocuments((current) => [...current.filter((doc) => doc.kind !== kind), captured])
+  }
 
   /* A disabled button that will not say why is a dead end. Each step reports
      what is still outstanding, in the applicant's words. */
@@ -254,6 +268,7 @@ function Form({ token, role, inviter }: { token: string; role: string; inviter: 
       ...values,
       emailVerified,
       mobileVerified: false,
+      documents,
       submittedAt: new Date().toISOString(),
     }
     submitOnboarding(token, submission)
@@ -284,8 +299,8 @@ function Form({ token, role, inviter }: { token: string; role: string; inviter: 
               onVerified={() => setEmailVerified(true)}
             />
           )}
-          {step === 1 && <StepIdentity values={values} set={set} />}
-          {step === 2 && <StepBank values={values} set={set} />}
+          {step === 1 && <StepIdentity values={values} set={set} attach={attach} />}
+          {step === 2 && <StepBank values={values} set={set} attach={attach} />}
           {step === 3 && (
             <StepReview
               values={values}
@@ -606,7 +621,9 @@ function StepDetails({
 
 /* ------------------------------------------------------------------ step 2 */
 
-function StepIdentity({ values, set }: { values: Values; set: Setter }) {
+type Attach = (kind: DocKind, file: File | null) => Promise<void>
+
+function StepIdentity({ values, set, attach }: { values: Values; set: Setter; attach: Attach }) {
   return (
     <>
       <Section
@@ -634,12 +651,14 @@ function StepIdentity({ values, set }: { values: Values; set: Setter }) {
             <FileInput
               accept="image/jpeg,image/png,application/pdf"
               onChange={(name) => set('panFront', name)}
+              onFile={(file) => void attach('pan_front', file)}
             />
           </Field>
           <Field label="Back image (optional)" hint={DOC_HINT}>
             <FileInput
               accept="image/jpeg,image/png,application/pdf"
               onChange={(name) => set('panBack', name)}
+              onFile={(file) => void attach('pan_back', file)}
             />
           </Field>
         </Grid>
@@ -667,12 +686,14 @@ function StepIdentity({ values, set }: { values: Values; set: Setter }) {
             <FileInput
               accept="image/jpeg,image/png,application/pdf"
               onChange={(name) => set('aadhaarFront', name)}
+              onFile={(file) => void attach('aadhaar_front', file)}
             />
           </Field>
           <Field label="Back image" hint={DOC_HINT}>
             <FileInput
               accept="image/jpeg,image/png,application/pdf"
               onChange={(name) => set('aadhaarBack', name)}
+              onFile={(file) => void attach('aadhaar_back', file)}
             />
           </Field>
         </Grid>
@@ -688,6 +709,7 @@ function StepIdentity({ values, set }: { values: Values; set: Setter }) {
             accept="image/jpeg,image/png"
             prompt="Choose photo"
             onChange={(name) => set('photo', name)}
+              onFile={(file) => void attach('photo', file)}
           />
         </Field>
       </Section>
@@ -697,7 +719,7 @@ function StepIdentity({ values, set }: { values: Values; set: Setter }) {
 
 /* ------------------------------------------------------------------ step 3 */
 
-function StepBank({ values, set }: { values: Values; set: Setter }) {
+function StepBank({ values, set, attach }: { values: Values; set: Setter; attach: Attach }) {
   return (
     <>
       <Section
@@ -735,6 +757,7 @@ function StepBank({ values, set }: { values: Values; set: Setter }) {
           <FileInput
             accept="image/jpeg,image/png,application/pdf"
             onChange={(name) => set('cancelledCheque', name)}
+              onFile={(file) => void attach('cheque', file)}
           />
         </Field>
       </Section>

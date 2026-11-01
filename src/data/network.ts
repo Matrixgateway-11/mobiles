@@ -205,6 +205,8 @@ export type InviteRole = 'distributor' | 'retailer'
     rejected  — turned down, with a reason */
 export type InviteStatus = 'pending' | 'submitted' | 'forwarded' | 'approved' | 'rejected'
 
+import type { UploadedDoc } from '@/lib/documents'
+
 export type Submission = {
   fullName: string
   email: string
@@ -224,6 +226,8 @@ export type Submission = {
   accountNumber: string
   ifsc: string
   cancelledCheque: string
+  /** What the applicant actually uploaded, ready to open in review. */
+  documents: UploadedDoc[]
   submittedAt: string
 }
 
@@ -283,6 +287,13 @@ export const seedInvitations: Invitation[] = [
       accountNumber: '1681155000076136',
       ifsc: 'KVBL0001681',
       cancelledCheque: 'cheque.pdf',
+      documents: [
+        { kind: 'pan_front', name: 'pan-front.jpg', mime: 'image/jpeg', size: 0, url: '' },
+        { kind: 'aadhaar_front', name: 'aadhaar-front.jpg', mime: 'image/jpeg', size: 0, url: '' },
+        { kind: 'aadhaar_back', name: 'aadhaar-back.jpg', mime: 'image/jpeg', size: 0, url: '' },
+        { kind: 'photo', name: 'photo.jpg', mime: 'image/jpeg', size: 0, url: '' },
+        { kind: 'cheque', name: 'cheque.pdf', mime: 'application/pdf', size: 0, url: '' },
+      ],
       submittedAt: '2026-10-30T16:05:00',
     },
   },
@@ -314,6 +325,14 @@ export const seedInvitations: Invitation[] = [
       accountNumber: '50100393292469',
       ifsc: 'HDFC0001939',
       cancelledCheque: 'cheque.pdf',
+      documents: [
+        { kind: 'pan_front', name: 'pan-front.jpg', mime: 'image/jpeg', size: 0, url: '' },
+        { kind: 'pan_back', name: 'pan-back.jpg', mime: 'image/jpeg', size: 0, url: '' },
+        { kind: 'aadhaar_front', name: 'aadhaar-front.jpg', mime: 'image/jpeg', size: 0, url: '' },
+        { kind: 'aadhaar_back', name: 'aadhaar-back.jpg', mime: 'image/jpeg', size: 0, url: '' },
+        { kind: 'photo', name: 'photo.jpg', mime: 'image/jpeg', size: 0, url: '' },
+        { kind: 'cheque', name: 'cheque.pdf', mime: 'application/pdf', size: 0, url: '' },
+      ],
       submittedAt: '2026-10-31T10:22:00',
     },
   },

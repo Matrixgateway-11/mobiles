@@ -6,7 +6,6 @@ import {
   RiCloseCircleLine,
   RiMailCheckLine,
   RiPhoneLine,
-  RiFileTextLine,
   RiShieldCheckLine,
   RiKey2Line,
 } from '@remixicon/react'
@@ -34,6 +33,7 @@ import {
   forwardToAdmin,
 } from '@/lib/network'
 import { money, formatDate, formatDateTime, count } from '@/lib/format'
+import { DocumentStrip, DocumentViewer } from '@/components/DocumentViewer'
 
 const SAMPLE = 100000
 
@@ -252,6 +252,7 @@ function ReviewDialog({
     String(invitation.commissionPercent ?? invitation.proposedPercent ?? 1),
   )
   const [rejecting, setRejecting] = useState(false)
+  const [viewing, setViewing] = useState<number | null>(null)
   const [reason, setReason] = useState('')
   const [issued, setIssued] = useState<{ mpin: string; id: string } | null>(null)
 
@@ -411,25 +412,10 @@ function ReviewDialog({
 
         <div>
           <h3 className="mb-2 text-xs font-medium text-ink-500">Documents</h3>
-          <ul className="flex flex-wrap gap-2">
-            {[
-              submission.panFront,
-              submission.panBack,
-              submission.aadhaarFront,
-              submission.aadhaarBack,
-              submission.photo,
-              submission.cancelledCheque,
-            ]
-              .filter(Boolean)
-              .map((file) => (
-                <li key={file}>
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 font-mono text-xs text-ink-700">
-                    <RiFileTextLine size={13} className="text-ink-400" aria-hidden />
-                    {file}
-                  </span>
-                </li>
-              ))}
-          </ul>
+          <DocumentStrip documents={submission.documents ?? []} onOpen={setViewing} />
+          <p className="mt-2 text-xs text-ink-500">
+            Click a scan to open it full size. Check the name on the PAN against the bank account.
+          </p>
         </div>
 
         {!settled && (
@@ -469,6 +455,15 @@ function ReviewDialog({
           </div>
         )}
       </div>
+
+      {viewing !== null && (
+        <DocumentViewer
+          documents={submission.documents ?? []}
+          index={viewing}
+          onClose={() => setViewing(null)}
+          onIndexChange={setViewing}
+        />
+      )}
     </Modal>
   )
 }

@@ -95,6 +95,7 @@ export function FileInput({
   accept,
   prompt = 'Choose file',
   onChange,
+  onFile,
   className,
 }: {
   id?: string
@@ -102,6 +103,8 @@ export function FileInput({
   prompt?: string
   /** Reports the chosen filename, or '' when cleared. */
   onChange?: (name: string) => void
+  /** The file itself, for anything that needs to read or store it. */
+  onFile?: (file: File | null) => void
   className?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -134,9 +137,10 @@ export function FileInput({
         accept={accept}
         className="sr-only"
         onChange={(event) => {
-          const chosen = event.target.files?.[0]?.name ?? ''
-          setName(chosen)
-          onChange?.(chosen)
+          const file = event.target.files?.[0] ?? null
+          setName(file?.name ?? '')
+          onChange?.(file?.name ?? '')
+          onFile?.(file)
         }}
       />
       {name && (
@@ -146,6 +150,7 @@ export function FileInput({
           onClick={() => {
             setName('')
             onChange?.('')
+            onFile?.(null)
             if (inputRef.current) inputRef.current.value = ''
           }}
           className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"
