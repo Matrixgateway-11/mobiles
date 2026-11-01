@@ -9,30 +9,34 @@ import {
   RiArrowRightSLine,
   RiCornerDownRightLine,
   RiSearchLine,
-  RiPercentLine,
   RiDownload2Line,
   RiLinkM,
 } from '@remixicon/react'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { Button, IconButton } from '@/components/ui/Button'
+import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardFooter } from '@/components/ui/Card'
 import { StatCard, StatGrid } from '@/components/ui/StatCard'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { Field, SearchInput, Select, DateInput, Input } from '@/components/ui/Field'
 import { AccountStatusBadge, RoleBadge } from '@/components/ui/Badge'
+import { SegmentedControl } from '@/components/ui/Tabs'
+import { Alert } from '@/components/ui/Alert'
 import { Modal } from '@/components/ui/Modal'
 import { TableWrap, THead, TH, TBody, TR, TD, CellStack, MonoCell } from '@/components/ui/Table'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { ROLE_LABEL, type Account } from '@/data/network'
+import { ROLE_LABEL, type Account, type AccountStatus } from '@/data/network'
 import {
   useCurrentAccount,
   useNetwork,
   networkOf,
   childrenOf,
   inboxFor,
+  canManage,
   setCommissionPercent,
+  setAccountStatus,
+  commissionHistoryFor,
 } from '@/lib/network'
-import { money, count, formatDate } from '@/lib/format'
+import { money, count, formatDate, formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
 const SAMPLE = 100000
@@ -47,7 +51,7 @@ export default function MyTeam() {
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [expanded, setExpanded] = useState<string[]>([])
-  const [rateFor, setRateFor] = useState<Account | null>(null)
+  const [managing, setManaging] = useState<Account | null>(null)
 
   const isAdmin = account.role === 'admin'
   const everyone = networkOf(network, account)
@@ -242,7 +246,8 @@ export default function MyTeam() {
                       team={kids}
                       expanded={open}
                       onToggle={kids.length ? () => toggle(member.id) : undefined}
-                      onSetRate={setRateFor}
+                      actor={account}
+                      onManage={setManaging}
                     />
                   )
                 })}
@@ -260,7 +265,9 @@ export default function MyTeam() {
         )}
       </Card>
 
-      {rateFor && <RateDialog member={rateFor} onClose={() => setRateFor(null)} />}
+      {managing && (
+        <ManageDialog actor={account} member={managing} onClose={() => setManaging(null)} />
+      )}
     </>
   )
 }
@@ -270,20 +277,28 @@ function AccountRows({
   team,
   expanded,
   onToggle,
-  onSetRate,
+  actor,
+  onManage,
 }: {
   member: Account
   team: Account[]
   expanded: boolean
   onToggle?: () => void
-  onSetRate: (account: Account) => void
+  actor: Account
+  onManage: (account: Account) => void
 }) {
   return (
     <>
-      <AccountRow member={member} expanded={expanded} onToggle={onToggle} onSetRate={onSetRate} />
+      <AccountRow
+        member={member}
+        expanded={expanded}
+        onToggle={onToggle}
+        actor={actor}
+        onManage={onManage}
+      />
       {expanded &&
         team.map((child) => (
-          <AccountRow key={child.id} member={child} nested onSetRate={onSetRate} />
+          <AccountRow key={child.id} member={child} nested actor={actor} onManage={onManage} />
         ))}
     </>
   )
@@ -294,14 +309,17 @@ function AccountRow({
   nested = false,
   expanded = false,
   onToggle,
-  onSetRate,
+  actor,
+  onManage,
 }: {
   member: Account
   nested?: boolean
   expanded?: boolean
   onToggle?: () => void
-  onSetRate: (account: Account) => void
+  actor: Account
+  onManage: (account: Account) => void
 }) {
+  const editable = canManage(actor, member)
   return (
     <TR className={cn(nested && 'bg-ink-50')}>
       <TD className="pr-0">
@@ -353,26 +371,52 @@ function AccountRow({
         {money(member.wallet)}
       </TD>
       <TD align="right">
-        <IconButton
-          icon={RiPercentLine}
-          label={`Set the rate for ${member.name}`}
-          size="sm"
-          variant="ghost"
-          onClick={() => onSetRate(member)}
-        />
+        <Button size="sm" disabled={!editable} onClick={() => onManage(member)}>
+          Manage
+        </Button>
       </TD>
     </TR>
   )
 }
 
-function RateDialog({ member, onClose }: { member: Account; onClose: () => void }) {
+/* Rate and status in one dialog. They are the two things an account's parent
+   actually changes after approval, and splitting them across two buttons made
+   the row busier without making either easier to find. */
+
+const STATUSES = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'On hold' },
+  { value: 'banned', label: 'Banned' },
+] as const
+
+function ManageDialog({
+  actor,
+  member,
+  onClose,
+}: {
+  actor: Account
+  member: Account
+  onClose: () => void
+}) {
+  const network = useNetwork()
   const [percent, setPercent] = useState(String(member.commissionPercent))
+  const [status, setStatus] = useState<AccountStatus>(member.status)
+
   const rate = Number(percent)
-  const valid = Number.isFinite(rate) && rate >= 0 && rate <= 100
+  const validRate = Number.isFinite(rate) && rate >= 0 && rate <= 100
   const keep = (SAMPLE * rate) / 100
 
+  const isAdmin = actor.role === 'admin'
+  const history = commissionHistoryFor(network, member.id)
+  const last = history[0]
+
+  const rateChanged = validRate && rate !== member.commissionPercent
+  const statusChanged = status !== member.status
+  const dirty = rateChanged || statusChanged
+
   const save = () => {
-    setCommissionPercent(member.id, rate)
+    if (rateChanged) setCommissionPercent(member.id, rate, actor.id)
+    if (statusChanged) setAccountStatus(member.id, status)
     onClose()
   }
 
@@ -380,39 +424,87 @@ function RateDialog({ member, onClose }: { member: Account; onClose: () => void 
     <Modal
       open
       onClose={onClose}
-      title="Commission rate"
-      description={`${member.name} · ${ROLE_LABEL[member.role]}`}
+      title="Manage account"
+      description={`${member.name} · ${ROLE_LABEL[member.role]} · ${member.id}`}
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
-          <Button variant="primary" disabled={!valid} onClick={save}>
-            Save rate
+          <Button variant="primary" disabled={!dirty || !validRate} onClick={save}>
+            Save changes
           </Button>
         </>
       }
     >
-      <Field label="Rate" htmlFor="member-rate" className="w-32">
-        <div className="relative">
-          <Input
-            id="member-rate"
-            inputMode="decimal"
-            className="tnum pr-7"
-            value={percent}
-            onChange={(event) => setPercent(event.target.value.replace(/[^\d.]/g, ''))}
+      <div className="space-y-6">
+        <section>
+          <h3 className="text-md font-semibold text-ink-900">Commission rate</h3>
+          <p className="mt-0.5 text-sm text-ink-500">
+            The share that comes up to you on everything they collect.
+          </p>
+
+          <div className="mt-3 flex flex-wrap items-end gap-4">
+            <Field label="Rate" htmlFor="manage-rate" className="w-32">
+              <div className="relative">
+                <Input
+                  id="manage-rate"
+                  inputMode="decimal"
+                  className="tnum pr-7"
+                  value={percent}
+                  onChange={(event) => setPercent(event.target.value.replace(/[^\d.]/g, ''))}
+                />
+                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-base text-ink-500">
+                  %
+                </span>
+              </div>
+            </Field>
+            {validRate && (
+              <p className="pb-2 text-base leading-relaxed text-ink-600">
+                On {money(SAMPLE)} collected,{' '}
+                <span className="tnum font-semibold text-success-700">{money(keep)}</span> comes up
+                to you and{' '}
+                <span className="tnum font-semibold text-ink-900">{money(SAMPLE - keep)}</span>{' '}
+                stays with them.
+              </p>
+            )}
+          </div>
+
+          {last && (
+            <p className="mt-3 text-sm text-ink-500">
+              Last changed from {last.previousPercent}% to {last.newPercent}% on{' '}
+              {formatDateTime(last.at)}.
+            </p>
+          )}
+        </section>
+
+        <section className="border-t border-ink-100 pt-5">
+          <h3 className="text-md font-semibold text-ink-900">Account status</h3>
+          <p className="mt-0.5 text-sm text-ink-500">
+            On hold stops them transacting and is reversible. A ban is a verdict and only the admin
+            can issue one.
+          </p>
+
+          <SegmentedControl
+            className="mt-3"
+            options={STATUSES.filter((option) => option.value !== 'banned' || isAdmin)}
+            value={status}
+            onChange={setStatus}
           />
-          <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-base text-ink-500">
-            %
-          </span>
-        </div>
-      </Field>
-      {valid && (
-        <p className="mt-4 text-base leading-relaxed text-ink-600">
-          On {money(SAMPLE)} collected,{' '}
-          <span className="tnum font-semibold text-success-700">{money(keep)}</span> comes up to you
-          and <span className="tnum font-semibold text-ink-900">{money(SAMPLE - keep)}</span> stays
-          with {member.name}.
-        </p>
-      )}
+
+          {statusChanged && status !== 'active' && (
+            <Alert tone={status === 'banned' ? 'danger' : 'warning'} className="mt-3">
+              {member.name} will not be able to sign in or move money once you save.
+              {member.role === 'distributor' &&
+                ' Their retailers keep trading — suspend them separately if that is what you mean.'}
+            </Alert>
+          )}
+
+          {statusChanged && status === 'active' && member.status !== 'active' && (
+            <Alert tone="success" className="mt-3">
+              {member.name} will be able to sign in and transact again once you save.
+            </Alert>
+          )}
+        </section>
+      </div>
     </Modal>
   )
 }

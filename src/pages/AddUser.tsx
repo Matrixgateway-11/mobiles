@@ -38,6 +38,7 @@ import {
   invitationsFrom,
   linkFor,
 } from '@/lib/network'
+import { APP_URL, APP_URL_IS_CONFIGURED } from '@/lib/config'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
@@ -456,6 +457,15 @@ function LinkOnboarding({ roles }: { roles: InviteRole[] }) {
 
   return (
     <div className="space-y-4">
+      {!APP_URL_IS_CONFIGURED && (
+        <Alert tone="warning" title="Links will not work outside this machine">
+          No public domain is configured, so a generated link carries{' '}
+          <span className="font-mono text-sm">{APP_URL}</span>. Set{' '}
+          <span className="font-mono text-sm">VITE_PUBLIC_APP_URL</span> to the live domain before
+          sending any of these to an applicant.
+        </Alert>
+      )}
+
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <div className="flex items-start gap-3 border-b border-ink-200 px-5 py-4">

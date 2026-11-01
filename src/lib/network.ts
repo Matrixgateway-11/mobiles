@@ -1,11 +1,13 @@
 import { useSyncExternalStore } from 'react'
 import { useAccountId } from '@/lib/session'
+import { APP_URL } from '@/lib/config'
 import {
   ADMIN_ID,
   seedAccounts,
   seedInvitations,
   expiryFrom,
   type Account,
+  type AccountStatus,
   type Invitation,
   type InviteRole,
   type Role,
@@ -24,14 +26,25 @@ import {
 
 const KEY = 'saimobiles.network'
 
+export type CommissionChange = {
+  accountId: string
+  previousPercent: number
+  newPercent: number
+  changedBy: string
+  reason: string
+  at: string
+}
+
 export type NetworkState = {
   accounts: Account[]
   invitations: Invitation[]
+  commissionChanges: CommissionChange[]
 }
 
 const seed = (): NetworkState => ({
   accounts: structuredClone(seedAccounts),
   invitations: structuredClone(seedInvitations),
+  commissionChanges: [],
 })
 
 function load(): NetworkState {
@@ -40,7 +53,8 @@ function load(): NetworkState {
     if (!raw) return seed()
     const parsed = JSON.parse(raw) as NetworkState
     if (!Array.isArray(parsed.accounts) || !Array.isArray(parsed.invitations)) return seed()
-    return parsed
+    // Older stores predate the rate history; fill it rather than discarding.
+    return { ...parsed, commissionChanges: parsed.commissionChanges ?? [] }
   } catch {
     return seed()
   }
@@ -200,6 +214,7 @@ export function approveInvitation(token: string, commissionPercent: number) {
   }
 
   commit({
+    ...state,
     accounts: [...state.accounts, account],
     invitations: state.invitations.map((i) =>
       i.token === token
@@ -226,14 +241,51 @@ export function rejectInvitation(token: string, reason: string) {
   })
 }
 
-export function setCommissionPercent(accountId: string, percent: number) {
+export function setCommissionPercent(
+  accountId: string,
+  percent: number,
+  changedBy: string,
+  reason = '',
+) {
+  const previous = state.accounts.find((a) => a.id === accountId)?.commissionPercent ?? 0
   commit({
     ...state,
     accounts: state.accounts.map((a) =>
       a.id === accountId ? { ...a, commissionPercent: percent } : a,
     ),
+    commissionChanges: [
+      {
+        accountId,
+        previousPercent: previous,
+        newPercent: percent,
+        changedBy,
+        reason,
+        at: new Date().toISOString(),
+      },
+      ...state.commissionChanges,
+    ],
   })
 }
+
+/** Suspending an account. Only the admin may ban; a distributor can put its own
+    retailer on hold, which is reversible and does not read as a verdict. */
+export function setAccountStatus(accountId: string, status: AccountStatus) {
+  commit({
+    ...state,
+    accounts: state.accounts.map((a) => (a.id === accountId ? { ...a, status } : a)),
+  })
+}
+
+/** Who may change another account's rate or status: the admin anyone, a
+    distributor only the retailers parented to it. Mirrors can_manage() in SQL. */
+export function canManage(actor: Account, target: Account) {
+  if (actor.id === target.id) return false
+  if (actor.role === 'admin') return true
+  return target.parentId === actor.id
+}
+
+export const commissionHistoryFor = (s: NetworkState, accountId: string) =>
+  s.commissionChanges.filter((c) => c.accountId === accountId)
 
 export function resetNetwork() {
   commit(seed())
@@ -279,8 +331,9 @@ export const awaitingAdmin = (s: NetworkState, accountId: string) =>
 export const invitationByToken = (s: NetworkState, token: string) =>
   s.invitations.find((i) => i.token === token) ?? null
 
-/** The URL an invitation is sent as. */
-export const linkFor = (token: string) => `${window.location.origin}/onboard/${token}`
+/** The URL an invitation is sent as — built from the configured domain, not
+    from whatever origin this browser happens to be on. */
+export const linkFor = (token: string) => `${APP_URL}/onboard/${token}`
 
 export function canOnboard(role: Role): InviteRole[] {
   if (role === 'admin') return ['distributor', 'retailer']
