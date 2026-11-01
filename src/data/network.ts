@@ -304,9 +304,7 @@ export const seedInvitations: Invitation[] = [
     note: 'Villianur shop',
     createdAt: '2026-10-29T09:15:00',
     expiresAt: '2026-11-05T09:15:00',
-    status: 'forwarded',
-    forwardedAt: '2026-10-31T12:40:00',
-    proposedPercent: 1.1,
+    status: 'submitted',
     submission: {
       fullName: 'L VIGNESHWARAN',
       email: 'vigneshwaran.l@gmail.com',

@@ -26,7 +26,11 @@ import {
    This is the seam for Supabase. Every mutation below becomes one call; the
    components never touch storage directly. */
 
-const KEY = 'saimobiles.network'
+/* Versioned. A store already in localStorage wins over the seed, so a
+   reviewer who used the console yesterday would never see fixtures added
+   today -- they would just report the screen as empty. Bumping the suffix
+   retires the old copy instead of asking anyone to open devtools. */
+const KEY = 'saimobiles.network.v2'
 
 export type CommissionChange = {
   accountId: string
