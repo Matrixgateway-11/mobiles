@@ -35,6 +35,7 @@ import {
   setCommissionPercent,
   setAccountStatus,
   commissionHistoryFor,
+  accountById,
 } from '@/lib/network'
 import { money, count, formatDate, formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -63,9 +64,16 @@ export default function MyTeam() {
     [everyone, isAdmin, account.id],
   )
 
+  /* Grouping is for browsing. The moment a filter is on, the admin is after
+     somebody in particular -- and a retailer folded inside a distributor they
+     have not expanded is one they would never find, because the table would
+     just say nobody matches. So a filter widens the search to the whole
+     hierarchy and the result is drawn flat. */
+  const filtering = query.trim() !== '' || role !== 'all' || status !== 'all'
+
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    return topLevel.filter((member) => {
+    return (filtering ? everyone : topLevel).filter((member) => {
       if (role !== 'all' && member.role !== role) return false
       if (status !== 'all' && member.status !== status) return false
       if (!needle) return true
@@ -73,7 +81,7 @@ export default function MyTeam() {
         .toLowerCase()
         .includes(needle)
     })
-  }, [topLevel, query, role, status])
+  }, [everyone, topLevel, filtering, query, role, status])
 
   const summary = useMemo(
     () => ({
@@ -237,7 +245,7 @@ export default function MyTeam() {
               </THead>
               <TBody>
                 {rows.map((member) => {
-                  const kids = isAdmin ? childrenOf(network, member.id) : []
+                  const kids = isAdmin && !filtering ? childrenOf(network, member.id) : []
                   const open = expanded.includes(member.id)
                   return (
                     <AccountRows
@@ -255,10 +263,18 @@ export default function MyTeam() {
             </TableWrap>
             <CardFooter>
               <p className="tnum text-sm text-ink-500">
-                Showing {count(rows.length)} of {count(topLevel.length)}
-                {isAdmin ? ' distributors' : ' retailers'}
-                <span className="mx-1.5 text-ink-300">·</span>
-                {count(summary.hierarchy)} accounts in total
+                {filtering ? (
+                  <>
+                    Showing {count(rows.length)} of {count(summary.hierarchy)} accounts
+                  </>
+                ) : (
+                  <>
+                    Showing {count(rows.length)} of {count(topLevel.length)}
+                    {isAdmin ? ' distributors' : ' retailers'}
+                    <span className="mx-1.5 text-ink-300">·</span>
+                    {count(summary.hierarchy)} accounts in total
+                  </>
+                )}
               </p>
             </CardFooter>
           </>
@@ -401,6 +417,7 @@ function ManageDialog({
   const network = useNetwork()
   const [percent, setPercent] = useState(String(member.commissionPercent))
   const [status, setStatus] = useState<AccountStatus>(member.status)
+  const [reason, setReason] = useState('')
 
   const rate = Number(percent)
   const validRate = Number.isFinite(rate) && rate >= 0 && rate <= 100
@@ -415,7 +432,7 @@ function ManageDialog({
   const dirty = rateChanged || statusChanged
 
   const save = () => {
-    if (rateChanged) setCommissionPercent(member.id, rate, actor.id)
+    if (rateChanged) setCommissionPercent(member.id, rate, actor.id, reason.trim())
     if (statusChanged) setAccountStatus(member.id, status)
     onClose()
   }
@@ -468,10 +485,28 @@ function ManageDialog({
             )}
           </div>
 
+          {rateChanged && (
+            <Field
+              label="Reason"
+              htmlFor="rate-reason"
+              hint="Optional, but it is what the rate history will show months from now."
+              className="mt-4"
+            >
+              <Input
+                id="rate-reason"
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                placeholder="Volume held up through Diwali"
+              />
+            </Field>
+          )}
+
           {last && (
-            <p className="mt-3 text-sm text-ink-500">
+            <p className="mt-3 text-sm leading-relaxed text-ink-500">
               Last changed from {last.previousPercent}% to {last.newPercent}% on{' '}
-              {formatDateTime(last.at)}.
+              {formatDateTime(last.at)} by{' '}
+              {accountById(network, last.changedBy)?.name ?? 'Sai Mobiles'}
+              {last.reason ? ` — ${last.reason}` : ''}.
             </p>
           )}
         </section>
