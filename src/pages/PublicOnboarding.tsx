@@ -33,6 +33,13 @@ const YEAR = new Date().getFullYear()
 
 const STEPS = ['Your details', 'Identity', 'Bank account', 'Review'] as const
 
+/** "12 digits — 5 entered", or nothing once the field is the right length. */
+const counted = (length: number, required: number, unit: string) =>
+  length === required ? undefined : `${required} ${unit} — ${length} entered`
+
+const sentenceList = (items: string[]) =>
+  items.length === 1 ? items[0] : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`
+
 /* The applicant has no account and no session — this page is reached by token
    alone, so everything it needs comes from the invitation. */
 export default function PublicOnboarding() {
@@ -214,24 +221,32 @@ function Form({ token, role, inviter }: { token: string; role: string; inviter: 
   const set = <K extends keyof typeof empty>(key: K, value: string) =>
     setValues((current) => ({ ...current, [key]: value }))
 
-  const complete = useMemo(
-    () => [
-      Boolean(values.fullName.trim() && emailVerified && values.mobile.length === 10),
-      Boolean(
-        values.pan.length === 10 &&
-          values.aadhaar.length === 12 &&
-          values.panFront &&
-          values.aadhaarFront &&
-          values.aadhaarBack &&
-          values.photo,
-      ),
-      Boolean(
-        values.accountNumber.length >= 9 && values.ifsc.length === 11 && values.cancelledCheque,
-      ),
-      agreed,
-    ],
-    [values, emailVerified, agreed],
-  )
+  /* A disabled button that will not say why is a dead end. Each step reports
+     what is still outstanding, in the applicant's words. */
+  const missing = useMemo(() => {
+    const need: string[][] = [[], [], [], []]
+
+    if (!values.fullName.trim()) need[0].push('your full name')
+    if (!emailVerified) need[0].push('a verified email address')
+    if (values.mobile.length !== 10) need[0].push('a 10-digit mobile number')
+
+    if (values.pan.length !== 10) need[1].push('a 10-character PAN')
+    if (!values.panFront) need[1].push('the PAN front image')
+    if (values.aadhaar.length !== 12) need[1].push('a 12-digit Aadhaar number')
+    if (!values.aadhaarFront) need[1].push('the Aadhaar front image')
+    if (!values.aadhaarBack) need[1].push('the Aadhaar back image')
+    if (!values.photo) need[1].push('a photograph')
+
+    if (values.accountNumber.length < 9) need[2].push('your account number')
+    if (values.ifsc.length !== 11) need[2].push('an 11-character IFSC code')
+    if (!values.cancelledCheque) need[2].push('a cancelled cheque')
+
+    if (!agreed) need[3].push('your confirmation')
+
+    return need
+  }, [values, emailVerified, agreed])
+
+  const complete = useMemo(() => missing.map((list) => list.length === 0), [missing])
 
   const submit = () => {
     const submission: Submission = {
@@ -281,7 +296,7 @@ function Form({ token, role, inviter }: { token: string; role: string; inviter: 
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-ink-200 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-200 px-5 py-4">
           <Button
             icon={RiArrowLeftLine}
             disabled={step === 0}
@@ -289,20 +304,28 @@ function Form({ token, role, inviter }: { token: string; role: string; inviter: 
           >
             Back
           </Button>
-          {step < STEPS.length - 1 ? (
-            <Button
-              variant="primary"
-              iconAfter={RiArrowRightLine}
-              disabled={!complete[step]}
-              onClick={() => setStep((s) => s + 1)}
-            >
-              Continue
-            </Button>
-          ) : (
-            <Button variant="primary" disabled={!agreed} onClick={submit}>
-              Submit application
-            </Button>
-          )}
+
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-4 gap-y-2">
+            {missing[step].length > 0 && (
+              <p className="min-w-0 text-sm text-ink-500 sm:text-right">
+                Still needed: {sentenceList(missing[step])}
+              </p>
+            )}
+            {step < STEPS.length - 1 ? (
+              <Button
+                variant="primary"
+                iconAfter={RiArrowRightLine}
+                disabled={!complete[step]}
+                onClick={() => setStep((s) => s + 1)}
+              >
+                Continue
+              </Button>
+            ) : (
+              <Button variant="primary" disabled={!agreed} onClick={submit}>
+                Submit application
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
     </>
@@ -538,7 +561,12 @@ function StepIdentity({ values, set }: { values: Values; set: Setter }) {
         title="PAN"
         description="Checked against the income tax database before your account is created."
       >
-        <Field label="PAN number" htmlFor="ob-pan" className="mb-5 sm:max-w-xs">
+        <Field
+          label="PAN number"
+          htmlFor="ob-pan"
+          hint={counted(values.pan.length, 10, 'characters')}
+          className="mb-5 sm:max-w-xs"
+        >
           <Input
             id="ob-pan"
             maxLength={10}
@@ -565,7 +593,12 @@ function StepIdentity({ values, set }: { values: Values; set: Setter }) {
       </Section>
 
       <Section icon={RiFingerprintLine} title="Aadhaar">
-        <Field label="Aadhaar number" htmlFor="ob-aadhaar" className="mb-5 sm:max-w-xs">
+        <Field
+          label="Aadhaar number"
+          htmlFor="ob-aadhaar"
+          hint={counted(values.aadhaar.length, 12, 'digits')}
+          className="mb-5 sm:max-w-xs"
+        >
           <Input
             id="ob-aadhaar"
             inputMode="numeric"
@@ -630,7 +663,11 @@ function StepBank({ values, set }: { values: Values; set: Setter }) {
               placeholder="Account number"
             />
           </Field>
-          <Field label="IFSC code" htmlFor="ob-ifsc">
+          <Field
+            label="IFSC code"
+            htmlFor="ob-ifsc"
+            hint={counted(values.ifsc.length, 11, 'characters')}
+          >
             <Input
               id="ob-ifsc"
               maxLength={11}
