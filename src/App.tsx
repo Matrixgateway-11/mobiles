@@ -2,12 +2,13 @@ import { Suspense, lazy, type ReactElement } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { PublicLayout } from '@/components/layout/PublicLayout'
-import { getStage } from '@/lib/session'
+import { getStage, signOut } from '@/lib/session'
 import { useCurrentAccount } from '@/lib/network'
 import { AuthProvider } from '@/lib/AuthContext'
-import { useAuthState } from '@/lib/auth'
+import { useAuthState, signOutOfSupabase } from '@/lib/auth'
 import { requiresTotp } from '@/lib/mfa'
 import { isLive } from '@/lib/supabase'
+import type { Account } from '@/data/network'
 
 import Login from '@/pages/Login'
 import { ForgotPassword } from '@/pages/ForgotCredential'
@@ -76,6 +77,45 @@ function NoProfile() {
       </div>
     </div>
   )
+}
+
+/** Suspending an account does not take the password away -- the admin closed
+    the account, not the credential -- so the check has to sit here, where every
+    console route passes. Without it the switch in Manage account moved a badge
+    and nothing else, while the dialog beside it promised the opposite. */
+function Suspended({ account }: { account: Account }) {
+  const banned = account.status === 'banned'
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4">
+      <div className="max-w-md rounded-xl border border-ink-200 bg-white p-8 text-center shadow-xs">
+        <h1 className="text-2xl font-semibold tracking-[-0.02em] text-ink-900">
+          {banned ? 'This account is closed' : 'This account is on hold'}
+        </h1>
+        <p className="mt-2 text-base leading-relaxed text-ink-500">
+          {banned
+            ? 'Sai Mobiles has closed this account, and payments through it have stopped.'
+            : 'Sai Mobiles has put this account on hold, so it cannot transact for now.'}{' '}
+          Talk to whoever onboarded you if you think that is wrong.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            void signOutOfSupabase()
+            signOut()
+          }}
+          className="mt-5 inline-flex h-9 items-center rounded-lg border border-ink-200 px-3.5 text-base font-medium text-ink-800 transition-colors hover:bg-ink-50"
+        >
+          Back to sign in
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function RequireActive({ children }: { children: ReactElement }) {
+  const account = useCurrentAccount()
+  if (account.status !== 'active') return <Suspended account={account} />
+  return children
 }
 
 function RequireSession({ children }: { children: ReactElement }) {
@@ -175,7 +215,9 @@ export default function App() {
         <Route
           element={
             <RequireSession>
-              <AppLayout />
+              <RequireActive>
+                <AppLayout />
+              </RequireActive>
             </RequireSession>
           }
         >
