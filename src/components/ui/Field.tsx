@@ -94,11 +94,14 @@ export function FileInput({
   id,
   accept,
   prompt = 'Choose file',
+  onChange,
   className,
 }: {
   id?: string
   accept?: string
   prompt?: string
+  /** Reports the chosen filename, or '' when cleared. */
+  onChange?: (name: string) => void
   className?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -130,7 +133,11 @@ export function FileInput({
         type="file"
         accept={accept}
         className="sr-only"
-        onChange={(event) => setName(event.target.files?.[0]?.name ?? '')}
+        onChange={(event) => {
+          const chosen = event.target.files?.[0]?.name ?? ''
+          setName(chosen)
+          onChange?.(chosen)
+        }}
       />
       {name && (
         <button
@@ -138,6 +145,7 @@ export function FileInput({
           aria-label="Remove file"
           onClick={() => {
             setName('')
+            onChange?.('')
             if (inputRef.current) inputRef.current.value = ''
           }}
           className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"

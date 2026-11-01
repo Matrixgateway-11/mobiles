@@ -69,11 +69,14 @@ export function Modal({
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          'relative my-auto w-full rounded-xl border border-ink-200 bg-white shadow-lg outline-none',
+          // The body scrolls, not the page: a long review dialog keeps its
+          // title and its Approve button in view the whole way down.
+          'relative my-auto flex max-h-[calc(100vh-2rem)] w-full flex-col rounded-xl',
+          'border border-ink-200 bg-white shadow-lg outline-none sm:max-h-[calc(100vh-3rem)]',
           WIDTHS[size],
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-ink-200 px-5 py-4">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-ink-200 px-5 py-4">
           <div className="min-w-0">
             <h2 id={titleId} className="text-lg font-semibold tracking-[-0.015em] text-ink-900">
               {title}
@@ -90,10 +93,10 @@ export function Modal({
           </button>
         </div>
 
-        <div className="px-5 py-4">{children}</div>
+        <div className="scrollbar-slim min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
 
         {footer && (
-          <div className="flex items-center justify-end gap-2 border-t border-ink-200 px-5 py-3.5">
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-ink-200 px-5 py-3.5">
             {footer}
           </div>
         )}

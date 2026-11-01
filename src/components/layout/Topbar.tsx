@@ -16,15 +16,20 @@ import {
   RiLogoutBoxRLine,
   RiTranslate2,
   RiCheckLine,
+  RiRepeatLine,
   type RemixiconComponentType,
 } from '@remixicon/react'
 import { IconButton } from '@/components/ui/Button'
 import { merchant } from '@/data/mock'
-import { signOut } from '@/lib/session'
+import { ROLE_LABEL } from '@/data/network'
+import { useCurrentAccount, useNetwork } from '@/lib/network'
+import { setAccountId, signOut } from '@/lib/session'
 import { money } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
 export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
+  const account = useCurrentAccount()
+
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-ink-200 bg-white/95 px-4 backdrop-blur-sm lg:px-6">
       <button
@@ -58,7 +63,7 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
           <WalletChip
             icon={RiWallet3Line}
             label="CC wallet"
-            value={merchant.ccWallet}
+            value={account.wallet}
             tone="brand"
           />
           <WalletChip
@@ -168,9 +173,17 @@ const LANGUAGES = [
   { code: 'hi', label: 'हिन्दी' },
 ]
 
+function initialsOf(name: string) {
+  const parts = name.trim().split(/\s+/)
+  return (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase()
+}
+
 function UserMenu() {
+  const account = useCurrentAccount()
+  const network = useNetwork()
   const [open, setOpen] = useState(false)
   const [languageOpen, setLanguageOpen] = useState(false)
+  const [switcherOpen, setSwitcherOpen] = useState(false)
   const [language, setLanguage] = useState('en')
   const ref = useRef<HTMLDivElement>(null)
 
@@ -179,6 +192,7 @@ function UserMenu() {
   const dismiss = () => {
     setOpen(false)
     setLanguageOpen(false)
+    setSwitcherOpen(false)
   }
 
   useEffect(() => {
@@ -213,14 +227,14 @@ function UserMenu() {
           className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-700 text-2xs font-semibold text-white"
           aria-hidden
         >
-          {merchant.initials}
+          {initialsOf(account.name)}
         </span>
         <span className="hidden flex-col items-start leading-none sm:flex">
           <span className="max-w-32 truncate text-sm font-semibold text-ink-900">
-            {merchant.name}
+            {account.name}
           </span>
           <span className="mt-0.5 text-2xs font-medium tracking-normal text-ink-500">
-            {merchant.role}
+            {ROLE_LABEL[account.role]}
           </span>
         </span>
         <RiArrowDownSLine
@@ -235,9 +249,62 @@ function UserMenu() {
           className="absolute right-0 z-30 mt-2 w-60 overflow-hidden rounded-xl border border-ink-200 bg-white shadow-lg"
         >
           <div className="border-b border-ink-100 px-4 py-3">
-            <p className="truncate text-base font-semibold text-ink-900">{merchant.name}</p>
-            <p className="mt-0.5 text-sm text-ink-500">{merchant.role} account</p>
+            <p className="truncate text-base font-semibold text-ink-900">{account.name}</p>
+            <p className="mt-0.5 text-sm text-ink-500">
+              {ROLE_LABEL[account.role]} account
+              <span className="mx-1.5 text-ink-300">·</span>
+              <span className="font-mono text-xs">{account.id}</span>
+            </p>
           </div>
+
+          {/* Prototype affordance: three panels, one browser. A real build
+              takes the role from the signed-in session instead. */}
+          <div className="border-b border-ink-100 p-1.5">
+            <button
+              type="button"
+              role="menuitem"
+              aria-expanded={switcherOpen}
+              onClick={() => setSwitcherOpen((v) => !v)}
+              className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-base text-ink-700 transition-colors hover:bg-ink-100 hover:text-ink-900"
+            >
+              <RiRepeatLine size={16} className="shrink-0 opacity-70" aria-hidden />
+              Switch panel
+              <RiArrowDownSLine
+                size={14}
+                className={cn('ml-auto text-ink-400 transition-transform', switcherOpen && 'rotate-180')}
+              />
+            </button>
+
+            {switcherOpen && (
+              <ul className="scrollbar-slim my-1 ml-4 max-h-56 space-y-px overflow-y-auto border-l border-ink-200 pl-2">
+                {network.accounts.map((option) => (
+                  <li key={option.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAccountId(option.id)
+                        dismiss()
+                      }}
+                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left transition-colors hover:bg-ink-100"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-ink-800">
+                          {option.name}
+                        </span>
+                        <span className="block text-2xs tracking-normal text-ink-500">
+                          {ROLE_LABEL[option.role]}
+                        </span>
+                      </span>
+                      {option.id === account.id && (
+                        <RiCheckLine size={14} className="shrink-0 text-brand-700" />
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <div className="p-1.5">
             <button
               type="button"

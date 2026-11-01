@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { AppLayout } from '@/components/layout/AppLayout'
 import { PublicLayout } from '@/components/layout/PublicLayout'
 import { getStage } from '@/lib/session'
+import { useCurrentAccount } from '@/lib/network'
 
 import Login from '@/pages/Login'
 import Mpin from '@/pages/Mpin'
@@ -28,6 +29,12 @@ import { Terms, Privacy } from '@/pages/Placeholder'
 // on demand instead of riding along in the bundle every other page pays for.
 const Reports = lazy(() => import('@/pages/Reports'))
 const Commission = lazy(() => import('@/pages/Commission'))
+
+// The applicant's form is never opened by signed-in staff, and the invitations
+// inbox only by the two roles that can onboard — neither belongs in the chunk
+// every page pays for.
+const PublicOnboarding = lazy(() => import('@/pages/PublicOnboarding'))
+const Invitations = lazy(() => import('@/pages/Invitations'))
 
 /** Holds the page's shape while a lazy route resolves, so nothing jumps. */
 function PageSkeleton() {
@@ -70,6 +77,14 @@ function RedirectIfSignedIn({ children }: { children: ReactElement }) {
   return children
 }
 
+/** User Management does not exist for a retailer — there is nobody below them
+    to manage. Typing the URL lands on the dashboard rather than a 403. */
+function RequireManager({ children }: { children: ReactElement }) {
+  const account = useCurrentAccount()
+  if (account.role === 'retailer') return <Navigate to="/dashboard" replace />
+  return children
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -92,6 +107,16 @@ export default function App() {
         />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/forgot-mpin" element={<ForgotMpin />} />
+
+        {/* Reached by token alone — the applicant has no account yet. */}
+        <Route
+          path="/onboard/:token"
+          element={
+            <Suspense fallback={null}>
+              <PublicOnboarding />
+            </Suspense>
+          }
+        />
 
         {/* The sign-in page links to these, so they stay outside the gate. */}
         <Route
@@ -150,8 +175,32 @@ export default function App() {
             }
           />
 
-          <Route path="/users" element={<MyTeam />} />
-          <Route path="/users/add" element={<AddUser />} />
+          <Route
+            path="/users"
+            element={
+              <RequireManager>
+                <MyTeam />
+              </RequireManager>
+            }
+          />
+          <Route
+            path="/users/add"
+            element={
+              <RequireManager>
+                <AddUser />
+              </RequireManager>
+            }
+          />
+          <Route
+            path="/users/invitations"
+            element={
+              <RequireManager>
+                <Suspense fallback={<PageSkeleton />}>
+                  <Invitations />
+                </Suspense>
+              </RequireManager>
+            }
+          />
 
           <Route path="/tickets" element={<Tickets />} />
           <Route path="/help" element={<Help />} />

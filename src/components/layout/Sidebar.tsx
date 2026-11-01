@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { RiArrowDownSLine, RiMenuFoldLine, RiMenuUnfoldLine, RiCloseLine } from '@remixicon/react'
-import { navigation, type NavItem } from './nav'
+import { navigationFor, type NavItem } from './nav'
 import { Logo } from '@/components/ui/Logo'
+import { useCurrentAccount, useNetwork, inboxFor } from '@/lib/network'
 import { cn } from '@/lib/cn'
 
 function itemIsActive(item: NavItem, pathname: string) {
@@ -22,6 +23,10 @@ export function Sidebar({
   onCloseMobile: () => void
 }) {
   const { pathname } = useLocation()
+  const account = useCurrentAccount()
+  const network = useNetwork()
+  const navigation = navigationFor(account.role, inboxFor(network, account).length)
+
   const [openGroups, setOpenGroups] = useState<string[]>(() =>
     navigation
       .flatMap((section) => section.items)
@@ -169,6 +174,9 @@ function SidebarItem({
   onNavigate: () => void
 }) {
   const Icon = item.icon
+  // Collapsed, the submenu is hidden, so anything waiting inside it needs a
+  // mark on the parent or it goes unnoticed.
+  const waiting = item.children?.reduce((sum, child) => sum + (child.badge ?? 0), 0) ?? 0
 
   if (item.to) {
     return (
@@ -211,10 +219,26 @@ function SidebarItem({
             : 'text-white/70 hover:bg-white/8 hover:text-white',
         )}
       >
-        <Icon size={18} className={cn('shrink-0', active ? 'text-brand-200' : 'text-white/55')} />
+        <span className="relative shrink-0">
+          <Icon size={18} className={cn(active ? 'text-brand-200' : 'text-white/55')} />
+          {collapsed && waiting > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-brand-300 ring-2 ring-brand-900"
+              aria-label={`${waiting} waiting`}
+            />
+          )}
+        </span>
         {!collapsed && (
           <>
             <span className="truncate text-left">{item.label}</span>
+            {waiting > 0 && (
+              <span
+                className="tnum ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-300 px-1 text-2xs font-semibold tracking-normal text-brand-950"
+                aria-label={`${waiting} waiting`}
+              >
+                {waiting}
+              </span>
+            )}
             <RiArrowDownSLine
               size={16}
               className={cn(
@@ -243,6 +267,14 @@ function SidebarItem({
                 }
               >
                 <span className="truncate">{child.label}</span>
+                {child.badge ? (
+                  <span
+                    className="tnum ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-300 px-1 text-2xs font-semibold tracking-normal text-brand-950"
+                    aria-label={`${child.badge} waiting`}
+                  >
+                    {child.badge}
+                  </span>
+                ) : null}
               </NavLink>
             </li>
           ))}

@@ -78,13 +78,50 @@ Figures that appear twice are derived once. The commission overview chart and th
 "top earning days" ranking both read from `commissionTxns`, so the two cannot drift
 apart the way hand-entered totals do.
 
+## Roles and onboarding
+
+Three levels: one **admin**, **distributors** under the admin, **retailers** under a
+distributor. A retailer is the leaf — nobody is onboarded below one, which is why
+the retailer console has no User Management section at all, rather than a disabled
+or empty one.
+
+| | Admin | Distributor | Retailer |
+|---|---|---|---|
+| Onboards | distributors and retailers | retailers | nobody |
+| Approves | yes, the final decision | no — proposes and passes up | no |
+| Sees | every account | its own retailers | itself |
+
+**Onboarding by link.** Add User has a third tab that mints a tokenised URL. The
+applicant opens `/onboard/:token`, which is outside the session gate, and fills in
+their own details across four steps with their email verified by a one-time code.
+Nobody is onboarded straight from the form: the finished application lands in the
+inviter's Invitations inbox.
+
+**Two-stage approval.** A distributor can review a retailer and propose a rate, but
+only the admin creates the account. On approval an MPIN is issued and the account
+appears in the hierarchy.
+
+**Commission** is the share an account's parent keeps. The rate is set at approval
+and the dialog shows what it means in rupees — at 1%, ₹1,000 of ₹1,00,000 collected
+goes up and ₹99,000 stays.
+
+## State
+
+`src/lib/network.ts` is the single seam for persistence. Accounts and invitations
+live in `localStorage` — deliberately, not `sessionStorage`, because an onboarding
+link is opened in a second tab and the reviewer's inbox updates from a `storage`
+event the moment the applicant submits. Swapping in Supabase replaces the mutations
+in that one file; no component touches storage.
+
+Transaction, wallet and ledger figures stay as fixtures in `src/data/mock.ts`.
+
 ## Screens
 
 Built from the live console: Dashboard; Credit Card Payments (Overview, Load Money,
 Disbursements, Bank List, Payment Links, Wallet Ledger, Reports); QR Transactions;
-Commission (wallet and structure); User Management (My Team & Activity, Add User);
-Tickets; Help & Support; Account Settings (Profile, KYC, Security, Activity); Login
-and MPIN.
+Commission (wallet and structure); User Management (network, Add User with three
+onboarding modes, Invitations); the public onboarding form; Tickets; Help & Support;
+Account Settings (Profile, KYC, Security, Activity); Login and MPIN.
 
 Named placeholders with real empty states: Terms, Privacy — both await copy from
 legal rather than design.

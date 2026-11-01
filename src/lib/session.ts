@@ -7,7 +7,11 @@
    you to the start. Replace `startSignIn` and `completeSignIn` with real API
    calls and this module's shape stays the same. */
 
+import { useSyncExternalStore } from 'react'
+import { ADMIN_ID } from '@/data/network'
+
 const KEY = 'saimobiles.session'
+const ACCOUNT_KEY = 'saimobiles.account'
 
 export type Stage = 'signed-out' | 'awaiting-mpin' | 'signed-in'
 
@@ -38,4 +42,47 @@ export const startSignIn = () => setStage('awaiting-mpin')
 /** MPIN accepted; the console is now reachable. */
 export const completeSignIn = () => setStage('signed-in')
 
-export const signOut = () => setStage('signed-out')
+export const signOut = () => {
+  setStage('signed-out')
+  setAccountId(ADMIN_ID)
+}
+
+/* ------------------------------------------------------- the signed-in user
+
+   Which account the console is being operated as. A real build reads this from
+   the auth token; here it is a value you can switch, so all three panels are
+   reviewable without three sets of credentials. */
+
+function readAccountId() {
+  try {
+    return window.sessionStorage.getItem(ACCOUNT_KEY) || ADMIN_ID
+  } catch {
+    return ADMIN_ID
+  }
+}
+
+let accountId = readAccountId()
+const accountListeners = new Set<() => void>()
+
+export function getAccountId() {
+  return accountId
+}
+
+export function setAccountId(id: string) {
+  accountId = id
+  try {
+    window.sessionStorage.setItem(ACCOUNT_KEY, id)
+  } catch {
+    /* storage blocked — the choice just won't survive a reload */
+  }
+  accountListeners.forEach((listener) => listener())
+}
+
+function subscribeAccount(listener: () => void) {
+  accountListeners.add(listener)
+  return () => accountListeners.delete(listener)
+}
+
+export function useAccountId() {
+  return useSyncExternalStore(subscribeAccount, getAccountId, getAccountId)
+}

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 import type { Status } from '@/data/mock'
+import type { AccountStatus, InviteStatus, Role } from '@/data/network'
 
 type Tone = 'neutral' | 'success' | 'danger' | 'warning' | 'info' | 'brand'
 
@@ -61,4 +62,47 @@ export function LedgerTypeBadge({ type }: { type: 'credit' | 'debit' }) {
       {type === 'credit' ? 'Credit' : 'Debit'}
     </Badge>
   )
+}
+
+/* An application moves left to right: link out, applicant submits, a
+   distributor may pass it up, the admin decides. The ramp reads in that
+   order, and none of it borrows the brand maroon. */
+const INVITE: Record<InviteStatus, { tone: Tone; label: string }> = {
+  pending: { tone: 'neutral', label: 'Link sent' },
+  submitted: { tone: 'info', label: 'Submitted' },
+  forwarded: { tone: 'warning', label: 'With admin' },
+  approved: { tone: 'success', label: 'Approved' },
+  rejected: { tone: 'danger', label: 'Rejected' },
+}
+
+export function InviteStatusBadge({ status }: { status: InviteStatus }) {
+  const { tone, label } = INVITE[status]
+  return (
+    <Badge tone={tone} dot>
+      {label}
+    </Badge>
+  )
+}
+
+const ACCOUNT: Record<AccountStatus, { tone: Tone; label: string }> = {
+  active: { tone: 'success', label: 'Active' },
+  inactive: { tone: 'neutral', label: 'Inactive' },
+  banned: { tone: 'danger', label: 'Banned' },
+}
+
+export function AccountStatusBadge({ status }: { status: AccountStatus }) {
+  const { tone, label } = ACCOUNT[status]
+  return (
+    <Badge tone={tone} dot>
+      {label}
+    </Badge>
+  )
+}
+
+/** The admin wears the brand; the two trading roles stay neutral so a long
+    table does not turn into a colour chart. */
+export function RoleBadge({ role }: { role: Role }) {
+  if (role === 'admin') return <Badge tone="brand">Admin</Badge>
+  if (role === 'distributor') return <Badge tone="info">Distributor</Badge>
+  return <Badge tone="neutral">Retailer</Badge>
 }

@@ -11,19 +11,40 @@ import {
   RiBankLine,
   RiShieldCheckLine,
   RiInformationLine,
+  RiLinkM,
+  RiFileCopyLine,
+  RiCheckLine,
+  RiCheckboxCircleLine,
+  RiExternalLinkLine,
+  RiDeleteBinLine,
   type RemixiconComponentType,
 } from '@remixicon/react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button, IconButton } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
 import { Tabs } from '@/components/ui/Tabs'
 import { Alert } from '@/components/ui/Alert'
+import { Card, CardHeader, CardFooter } from '@/components/ui/Card'
 import { Field, Input, Select, FileInput, Checkbox } from '@/components/ui/Field'
+import { InviteStatusBadge, Badge } from '@/components/ui/Badge'
+import { TableWrap, THead, TH, TBody, TR, TD, CellStack, MonoCell } from '@/components/ui/Table'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { ROLE_LABEL, type Invitation, type InviteRole } from '@/data/network'
+import {
+  useCurrentAccount,
+  useNetwork,
+  canOnboard,
+  createInvitation,
+  revokeInvitation,
+  invitationsFrom,
+  linkFor,
+} from '@/lib/network'
+import { formatDate, formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
 const TABS = [
   { value: 'full', label: 'Full onboarding' },
   { value: 'quick', label: 'Quick onboarding' },
+  { value: 'link', label: 'Onboard via link' },
 ] as const
 
 const DOC_HINT = 'Max 3 MB · JPG, PNG or PDF'
@@ -31,6 +52,8 @@ const IMG_HINT = 'Max 3 MB · JPG or PNG'
 
 export default function AddUser() {
   const navigate = useNavigate()
+  const account = useCurrentAccount()
+  const roles = canOnboard(account.role)
   const [tab, setTab] = useState<(typeof TABS)[number]['value']>('full')
 
   return (
@@ -54,7 +77,9 @@ export default function AddUser() {
 
       <Tabs tabs={TABS} value={tab} onChange={setTab} className="mb-6" />
 
-      {tab === 'full' ? <FullOnboarding /> : <QuickOnboarding />}
+      {tab === 'full' && <FullOnboarding roles={roles} />}
+      {tab === 'quick' && <QuickOnboarding roles={roles} />}
+      {tab === 'link' && <LinkOnboarding roles={roles} />}
     </>
   )
 }
@@ -119,8 +144,8 @@ function Grid({ children, className }: { children: ReactNode; className?: string
 
 /* --------------------------------------------------------- full onboarding */
 
-function FullOnboarding() {
-  const [merchantType, setMerchantType] = useState('Retailer')
+function FullOnboarding({ roles }: { roles: InviteRole[] }) {
+  const [merchantType, setMerchantType] = useState<InviteRole>(roles[roles.length - 1])
   const [email, setEmail] = useState('')
   const [mobile, setMobile] = useState('')
   const [pan, setPan] = useState('')
@@ -141,15 +166,18 @@ function FullOnboarding() {
             <Select
               id="merchant-type"
               value={merchantType}
-              onChange={(event) => setMerchantType(event.target.value)}
+              onChange={(event) => setMerchantType(event.target.value as InviteRole)}
             >
-              <option value="Sub-Distributor">Sub-Distributor</option>
-              <option value="Retailer">Retailer</option>
+              {roles.map((option) => (
+                <option key={option} value={option}>
+                  {ROLE_LABEL[option]}
+                </option>
+              ))}
             </Select>
           </Field>
           <p className="mt-3 text-sm text-ink-500">
-            A Sub-Distributor can build their own downline. A Retailer transacts only on their own
-            account.
+            A Distributor builds a network of retailers underneath them. A Retailer is the leaf of
+            the hierarchy and onboards nobody.
           </p>
         </FormSection>
 
@@ -351,7 +379,7 @@ function Checklist() {
 
 /* -------------------------------------------------------- quick onboarding */
 
-function QuickOnboarding() {
+function QuickOnboarding({ roles }: { roles: InviteRole[] }) {
   const [agreed, setAgreed] = useState(false)
 
   return (
@@ -368,9 +396,12 @@ function QuickOnboarding() {
               <Input id="quick-name" placeholder="As printed on their PAN" />
             </Field>
             <Field label="Account level" htmlFor="quick-type">
-              <Select id="quick-type" defaultValue="Retailer">
-                <option value="Sub-Distributor">Sub-Distributor</option>
-                <option value="Retailer">Retailer</option>
+              <Select id="quick-type" defaultValue={roles[roles.length - 1]}>
+                {roles.map((option) => (
+                  <option key={option} value={option}>
+                    {ROLE_LABEL[option]}
+                  </option>
+                ))}
               </Select>
             </Field>
             <Field label="Mobile number" htmlFor="quick-mobile">
@@ -399,5 +430,267 @@ function QuickOnboarding() {
         </div>
       </form>
     </div>
+  )
+}
+
+/* ---------------------------------------------------------- link onboarding
+
+   The applicant fills the form themselves, so nothing here collects their
+   details. It mints a token, hands you a URL to send however you like, and
+   then tracks what comes back. */
+
+function LinkOnboarding({ roles }: { roles: InviteRole[] }) {
+  const account = useCurrentAccount()
+  const network = useNetwork()
+  const [role, setRole] = useState<InviteRole>(roles[roles.length - 1])
+  const [note, setNote] = useState('')
+  const [fresh, setFresh] = useState<Invitation | null>(null)
+
+  const links = invitationsFrom(network, account.id)
+
+  const generate = (event: React.FormEvent) => {
+    event.preventDefault()
+    setFresh(createInvitation({ invitedBy: account.id, inviteRole: role, note }))
+    setNote('')
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <div className="flex items-start gap-3 border-b border-ink-200 px-5 py-4">
+            <span
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"
+              aria-hidden
+            >
+              <RiLinkM size={16} />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-md font-semibold tracking-[-0.01em] text-ink-900">
+                Generate an onboarding link
+              </h2>
+              <p className="mt-0.5 text-sm text-ink-500">
+                Send it however you like. Whoever opens it fills in their own details.
+              </p>
+            </div>
+          </div>
+
+          <form className="p-5" onSubmit={generate}>
+            <Grid>
+              <Field label="Onboarding as" htmlFor="link-role">
+                <Select
+                  id="link-role"
+                  value={role}
+                  onChange={(event) => setRole(event.target.value as InviteRole)}
+                  disabled={roles.length === 1}
+                >
+                  {roles.map((option) => (
+                    <option key={option} value={option}>
+                      {ROLE_LABEL[option]}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label="Reference (optional)"
+                htmlFor="link-note"
+                hint="Only you see this — it keeps the list below readable."
+              >
+                <Input
+                  id="link-note"
+                  placeholder="Villianur shop"
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                />
+              </Field>
+            </Grid>
+            <div className="mt-5">
+              <Button type="submit" variant="primary" icon={RiLinkM}>
+                Generate link
+              </Button>
+            </div>
+          </form>
+
+          {fresh && <GeneratedLink invitation={fresh} />}
+        </Card>
+
+        <Card className="lg:sticky lg:top-20">
+          <div className="border-b border-ink-200 px-5 py-4">
+            <h2 className="text-md font-semibold tracking-[-0.01em] text-ink-900">
+              What happens next
+            </h2>
+          </div>
+          <ol className="divide-y divide-ink-100">
+            {[
+              'They open the link and fill in their own details.',
+              'Email is verified by a one-time code. The phone number is recorded but not yet verified.',
+              'The finished application lands in your Invitations inbox.',
+              account.role === 'admin'
+                ? 'You review it, set their commission percentage and approve.'
+                : 'You review it, propose a percentage and pass it to the admin, who decides.',
+              'On approval they are emailed their MPIN and can sign in.',
+            ].map((step, index) => (
+              <li key={step} className="flex items-start gap-2.5 px-5 py-3">
+                <span
+                  className="tnum mt-px inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-ink-100 text-2xs font-semibold text-ink-600"
+                  aria-hidden
+                >
+                  {index + 1}
+                </span>
+                <span className="text-base leading-relaxed text-ink-700">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader
+          title="Links you have sent"
+          description="A link expires after seven days if nobody fills it in."
+        />
+        {links.length === 0 ? (
+          <EmptyState
+            icon={RiLinkM}
+            title="No links sent yet"
+            description="Generate one above and it will appear here with its status."
+            compact
+          />
+        ) : (
+          <>
+            <TableWrap>
+              <THead>
+                <TH>Reference</TH>
+                <TH className="w-32">For</TH>
+                <TH>Sent</TH>
+                <TH>Expires</TH>
+                <TH className="w-32">Status</TH>
+                <TH>Applicant</TH>
+                <TH align="right">Action</TH>
+              </THead>
+              <TBody>
+                {links.map((invitation) => (
+                  <TR key={invitation.token}>
+                    <TD className="max-w-56">
+                      <CellStack
+                        primary={invitation.note || 'No reference'}
+                        secondary={<MonoCell>{invitation.token}</MonoCell>}
+                      />
+                    </TD>
+                    <TD>
+                      <Badge tone={invitation.inviteRole === 'distributor' ? 'info' : 'neutral'}>
+                        {ROLE_LABEL[invitation.inviteRole]}
+                      </Badge>
+                    </TD>
+                    <TD className="tnum text-ink-600">{formatDate(invitation.createdAt)}</TD>
+                    <TD className="tnum text-ink-600">{formatDate(invitation.expiresAt)}</TD>
+                    <TD>
+                      <InviteStatusBadge status={invitation.status} />
+                    </TD>
+                    <TD className="max-w-56">
+                      {invitation.submission ? (
+                        <CellStack
+                          primary={invitation.submission.fullName}
+                          secondary={formatDateTime(invitation.submission.submittedAt)}
+                        />
+                      ) : (
+                        <span className="text-ink-400">Not opened yet</span>
+                      )}
+                    </TD>
+                    <TD align="right">
+                      <div className="flex items-center justify-end gap-1">
+                        <CopyLinkButton token={invitation.token} compact />
+                        {invitation.status === 'pending' && (
+                          <IconButton
+                            icon={RiDeleteBinLine}
+                            label={`Revoke link ${invitation.token}`}
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => revokeInvitation(invitation.token)}
+                          />
+                        )}
+                      </div>
+                    </TD>
+                  </TR>
+                ))}
+              </TBody>
+            </TableWrap>
+            <CardFooter>
+              <p className="tnum text-sm text-ink-500">
+                {links.length} link{links.length === 1 ? '' : 's'} sent
+              </p>
+            </CardFooter>
+          </>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+function GeneratedLink({ invitation }: { invitation: Invitation }) {
+  return (
+    <div className="border-t border-ink-200 bg-success-50/40 p-5">
+      <div className="flex items-start gap-2.5">
+        <RiCheckboxCircleLine size={17} className="mt-px shrink-0 text-success-600" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-semibold text-success-800">
+            Link ready for a {ROLE_LABEL[invitation.inviteRole].toLowerCase()}
+          </p>
+          <p className="mt-0.5 text-sm text-ink-600">
+            Valid until {formatDate(invitation.expiresAt)}. Anyone holding this link can apply, so
+            send it only to the person you mean.
+          </p>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-lg border border-ink-200 bg-white px-3 py-2 font-mono text-xs text-ink-700">
+              {linkFor(invitation.token)}
+            </code>
+            <CopyLinkButton token={invitation.token} />
+            <Button
+              as="a"
+              href={linkFor(invitation.token)}
+              target="_blank"
+              rel="noreferrer"
+              icon={RiExternalLinkLine}
+            >
+              Open
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CopyLinkButton({ token, compact = false }: { token: string; compact?: boolean }) {
+  const [copied, setCopied] = useState(false)
+
+  const copy = () => {
+    void navigator.clipboard.writeText(linkFor(token)).then(() => {
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    })
+  }
+
+  if (compact) {
+    return (
+      <IconButton
+        icon={copied ? RiCheckLine : RiFileCopyLine}
+        label={copied ? 'Link copied' : 'Copy link'}
+        size="sm"
+        variant="ghost"
+        onClick={copy}
+      />
+    )
+  }
+
+  return (
+    <Button
+      variant={copied ? 'secondary' : 'primary'}
+      icon={copied ? RiCheckLine : RiFileCopyLine}
+      onClick={copy}
+    >
+      {copied ? 'Copied' : 'Copy link'}
+    </Button>
   )
 }

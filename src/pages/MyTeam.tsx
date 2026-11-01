@@ -9,42 +9,59 @@ import {
   RiArrowRightSLine,
   RiCornerDownRightLine,
   RiSearchLine,
-  RiEyeLine,
+  RiPercentLine,
   RiDownload2Line,
+  RiLinkM,
 } from '@remixicon/react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Card, CardHeader, CardFooter } from '@/components/ui/Card'
 import { StatCard, StatGrid } from '@/components/ui/StatCard'
 import { FilterBar } from '@/components/ui/FilterBar'
-import { Field, SearchInput, Select, DateInput } from '@/components/ui/Field'
-import { Badge } from '@/components/ui/Badge'
+import { Field, SearchInput, Select, DateInput, Input } from '@/components/ui/Field'
+import { AccountStatusBadge, RoleBadge } from '@/components/ui/Badge'
+import { Modal } from '@/components/ui/Modal'
 import { TableWrap, THead, TH, TBody, TR, TD, CellStack, MonoCell } from '@/components/ui/Table'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { team, type TeamMember, type TeamStatus } from '@/data/mock'
+import { ROLE_LABEL, type Account } from '@/data/network'
+import {
+  useCurrentAccount,
+  useNetwork,
+  networkOf,
+  childrenOf,
+  inboxFor,
+  setCommissionPercent,
+} from '@/lib/network'
 import { money, count, formatDate } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
-const STATUS_TONE: Record<TeamStatus, { tone: 'success' | 'neutral' | 'danger'; label: string }> = {
-  active: { tone: 'success', label: 'Active' },
-  inactive: { tone: 'neutral', label: 'Inactive' },
-  banned: { tone: 'danger', label: 'Banned' },
-}
-
-const flatten = (members: TeamMember[]): TeamMember[] =>
-  members.flatMap((member) => [member, ...flatten(member.team)])
+const SAMPLE = 100000
 
 export default function MyTeam() {
+  const account = useCurrentAccount()
+  const network = useNetwork()
+
   const [query, setQuery] = useState('')
   const [role, setRole] = useState('all')
   const [status, setStatus] = useState('all')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [expanded, setExpanded] = useState<string[]>([])
+  const [rateFor, setRateFor] = useState<Account | null>(null)
+
+  const isAdmin = account.role === 'admin'
+  const everyone = networkOf(network, account)
+
+  // The admin's table lists distributors with their retailers folded inside;
+  // a distributor's table is flat, because a retailer has nobody below them.
+  const topLevel = useMemo(
+    () => (isAdmin ? everyone.filter((a) => a.parentId === account.id) : everyone),
+    [everyone, isAdmin, account.id],
+  )
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    return team.filter((member) => {
+    return topLevel.filter((member) => {
       if (role !== 'all' && member.role !== role) return false
       if (status !== 'all' && member.status !== status) return false
       if (!needle) return true
@@ -52,19 +69,20 @@ export default function MyTeam() {
         .toLowerCase()
         .includes(needle)
     })
-  }, [query, role, status])
+  }, [topLevel, query, role, status])
 
-  const everyone = useMemo(() => flatten(team), [])
   const summary = useMemo(
     () => ({
-      direct: team.length,
+      direct: topLevel.length,
       hierarchy: everyone.length,
-      active: everyone.filter((m) => m.status === 'active').length,
-      blocked: everyone.filter((m) => m.status !== 'active').length,
-      wallet: rows.reduce((sum, m) => sum + m.wallet, 0),
+      active: everyone.filter((a) => a.status === 'active').length,
+      blocked: everyone.filter((a) => a.status !== 'active').length,
+      wallet: rows.reduce((sum, a) => sum + a.wallet, 0),
     }),
-    [everyone, rows],
+    [topLevel, everyone, rows],
   )
+
+  const pending = inboxFor(network, account).length
 
   const reset = () => {
     setQuery('')
@@ -80,13 +98,27 @@ export default function MyTeam() {
   return (
     <>
       <PageHeader
-        breadcrumb={[{ label: 'Home', to: '/dashboard' }, { label: 'My team & activity' }]}
-        title="My team & activity"
-        description="Everyone you onboarded directly, and how they are trading. Expand a row to see their own team."
+        breadcrumb={[
+          { label: 'Home', to: '/dashboard' },
+          { label: isAdmin ? 'All accounts' : 'My team & activity' },
+        ]}
+        title={isAdmin ? 'All accounts' : 'My team & activity'}
+        description={
+          isAdmin
+            ? 'Every distributor and retailer on the platform. Expand a distributor to see their retailers.'
+            : 'The retailers you onboarded, and how they are trading.'
+        }
         actions={
-          <Button as={Link} to="/users/add" variant="primary" icon={RiUserAddLine}>
-            Add user
-          </Button>
+          <>
+            {pending > 0 && (
+              <Button as={Link} to="/users/invitations" icon={RiLinkM}>
+                {pending} waiting
+              </Button>
+            )}
+            <Button as={Link} to="/users/add" variant="primary" icon={RiUserAddLine}>
+              Add user
+            </Button>
+          </>
         }
       />
 
@@ -99,13 +131,15 @@ export default function MyTeam() {
             onChange={(event) => setQuery(event.target.value)}
           />
         </Field>
-        <Field label="Role" htmlFor="team-role" className="w-full sm:w-44">
-          <Select id="team-role" value={role} onChange={(event) => setRole(event.target.value)}>
-            <option value="all">All roles</option>
-            <option value="Sub-Distributor">Sub-Distributor</option>
-            <option value="Retailer">Retailer</option>
-          </Select>
-        </Field>
+        {isAdmin && (
+          <Field label="Role" htmlFor="team-role" className="w-full sm:w-44">
+            <Select id="team-role" value={role} onChange={(event) => setRole(event.target.value)}>
+              <option value="all">All roles</option>
+              <option value="distributor">Distributor</option>
+              <option value="retailer">Retailer</option>
+            </Select>
+          </Field>
+        )}
         <Field label="Status" htmlFor="team-status" className="w-full sm:w-40">
           <Select
             id="team-status"
@@ -131,13 +165,13 @@ export default function MyTeam() {
 
       <StatGrid columns={5}>
         <StatCard
-          label="Directly added"
+          label={isAdmin ? 'Distributors' : 'Retailers onboarded'}
           value={count(summary.direct)}
           icon={RiUserAddLine}
           tone="brand"
         />
         <StatCard
-          label="Total users in hierarchy"
+          label={isAdmin ? 'Accounts in hierarchy' : 'In your network'}
           value={count(summary.hierarchy)}
           icon={RiTeamLine}
           tone="info"
@@ -164,8 +198,8 @@ export default function MyTeam() {
 
       <Card className="mt-4">
         <CardHeader
-          title="Team members"
-          description="Totals are lifetime unless a date range is applied."
+          title={isAdmin ? 'Accounts' : 'Team members'}
+          description="Rate is the share that comes up to you on everything they collect."
           actions={
             <Button size="sm" icon={RiDownload2Line}>
               Export CSV
@@ -176,7 +210,7 @@ export default function MyTeam() {
         {rows.length === 0 ? (
           <EmptyState
             icon={RiSearchLine}
-            title="No team members match these filters"
+            title="Nobody matches these filters"
             description="Try another role or status, or clear the search."
             action={<Button onClick={reset}>Clear filters</Button>}
             compact
@@ -186,73 +220,88 @@ export default function MyTeam() {
             <TableWrap>
               <THead>
                 <TH className="w-10" />
-                <TH>Member</TH>
+                <TH>Account</TH>
                 <TH>Contact</TH>
-                <TH className="w-36">Role</TH>
+                <TH className="w-32">Role</TH>
                 <TH className="w-28">Status</TH>
                 <TH>Joined</TH>
+                <TH align="right">Rate</TH>
                 <TH align="right">Payin</TH>
                 <TH align="right">Disbursement</TH>
                 <TH align="right">Wallet</TH>
                 <TH align="right">Action</TH>
               </THead>
               <TBody>
-                {rows.map((member) => (
-                  <MemberRows
-                    key={member.id}
-                    member={member}
-                    expanded={expanded.includes(member.id)}
-                    onToggle={() => toggle(member.id)}
-                  />
-                ))}
+                {rows.map((member) => {
+                  const kids = isAdmin ? childrenOf(network, member.id) : []
+                  const open = expanded.includes(member.id)
+                  return (
+                    <AccountRows
+                      key={member.id}
+                      member={member}
+                      team={kids}
+                      expanded={open}
+                      onToggle={kids.length ? () => toggle(member.id) : undefined}
+                      onSetRate={setRateFor}
+                    />
+                  )
+                })}
               </TBody>
             </TableWrap>
             <CardFooter>
               <p className="tnum text-sm text-ink-500">
-                Showing {count(rows.length)} of {count(team.length)} direct members
+                Showing {count(rows.length)} of {count(topLevel.length)}
+                {isAdmin ? ' distributors' : ' retailers'}
                 <span className="mx-1.5 text-ink-300">·</span>
-                {count(summary.hierarchy)} in the full hierarchy
+                {count(summary.hierarchy)} accounts in total
               </p>
             </CardFooter>
           </>
         )}
       </Card>
+
+      {rateFor && <RateDialog member={rateFor} onClose={() => setRateFor(null)} />}
     </>
   )
 }
 
-function MemberRows({
+function AccountRows({
   member,
+  team,
   expanded,
   onToggle,
+  onSetRate,
 }: {
-  member: TeamMember
+  member: Account
+  team: Account[]
   expanded: boolean
-  onToggle: () => void
+  onToggle?: () => void
+  onSetRate: (account: Account) => void
 }) {
-  const hasTeam = member.team.length > 0
-
   return (
     <>
-      <MemberRow member={member} expanded={expanded} onToggle={hasTeam ? onToggle : undefined} />
-      {expanded && member.team.map((child) => <MemberRow key={child.id} member={child} nested />)}
+      <AccountRow member={member} expanded={expanded} onToggle={onToggle} onSetRate={onSetRate} />
+      {expanded &&
+        team.map((child) => (
+          <AccountRow key={child.id} member={child} nested onSetRate={onSetRate} />
+        ))}
     </>
   )
 }
 
-function MemberRow({
+function AccountRow({
   member,
   nested = false,
   expanded = false,
   onToggle,
+  onSetRate,
 }: {
-  member: TeamMember
+  member: Account
   nested?: boolean
   expanded?: boolean
   onToggle?: () => void
+  onSetRate: (account: Account) => void
 }) {
-  const status = STATUS_TONE[member.status]
-
   return (
     <TR className={cn(nested && 'bg-ink-50')}>
       <TD className="pr-0">
@@ -261,7 +310,7 @@ function MemberRow({
             type="button"
             onClick={onToggle}
             aria-expanded={expanded}
-            aria-label={`${expanded ? 'Hide' : 'Show'} the team under ${member.name}`}
+            aria-label={`${expanded ? 'Hide' : 'Show'} the retailers under ${member.name}`}
             className="inline-flex size-6 items-center justify-center rounded-md text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"
           >
             <RiArrowRightSLine
@@ -285,14 +334,15 @@ function MemberRow({
         />
       </TD>
       <TD>
-        <Badge tone={member.role === 'Sub-Distributor' ? 'brand' : 'neutral'}>{member.role}</Badge>
+        <RoleBadge role={member.role} />
       </TD>
       <TD>
-        <Badge tone={status.tone} dot>
-          {status.label}
-        </Badge>
+        <AccountStatusBadge status={member.status} />
       </TD>
       <TD className="tnum text-ink-600">{formatDate(member.joined)}</TD>
+      <TD align="right" className="tnum font-medium text-ink-900">
+        {member.commissionPercent}%
+      </TD>
       <TD align="right" className="tnum text-ink-800">
         {money(member.payin)}
       </TD>
@@ -304,12 +354,65 @@ function MemberRow({
       </TD>
       <TD align="right">
         <IconButton
-          icon={RiEyeLine}
-          label={`View ${member.name}`}
+          icon={RiPercentLine}
+          label={`Set the rate for ${member.name}`}
           size="sm"
           variant="ghost"
+          onClick={() => onSetRate(member)}
         />
       </TD>
     </TR>
+  )
+}
+
+function RateDialog({ member, onClose }: { member: Account; onClose: () => void }) {
+  const [percent, setPercent] = useState(String(member.commissionPercent))
+  const rate = Number(percent)
+  const valid = Number.isFinite(rate) && rate >= 0 && rate <= 100
+  const keep = (SAMPLE * rate) / 100
+
+  const save = () => {
+    setCommissionPercent(member.id, rate)
+    onClose()
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Commission rate"
+      description={`${member.name} · ${ROLE_LABEL[member.role]}`}
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button variant="primary" disabled={!valid} onClick={save}>
+            Save rate
+          </Button>
+        </>
+      }
+    >
+      <Field label="Rate" htmlFor="member-rate" className="w-32">
+        <div className="relative">
+          <Input
+            id="member-rate"
+            inputMode="decimal"
+            className="tnum pr-7"
+            value={percent}
+            onChange={(event) => setPercent(event.target.value.replace(/[^\d.]/g, ''))}
+          />
+          <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-base text-ink-500">
+            %
+          </span>
+        </div>
+      </Field>
+      {valid && (
+        <p className="mt-4 text-base leading-relaxed text-ink-600">
+          On {money(SAMPLE)} collected,{' '}
+          <span className="tnum font-semibold text-success-700">{money(keep)}</span> comes up to you
+          and <span className="tnum font-semibold text-ink-900">{money(SAMPLE - keep)}</span> stays
+          with {member.name}.
+        </p>
+      )}
+    </Modal>
   )
 }
