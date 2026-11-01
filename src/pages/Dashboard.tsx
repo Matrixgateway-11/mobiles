@@ -2,307 +2,408 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   RiArrowRightLine,
-  RiArrowLeftDownLine,
   RiArrowRightUpLine,
-  RiBillLine,
-  RiQrScan2Line,
-  RiSmartphoneLine,
+  RiArrowRightDownLine,
+  RiWallet3Line,
+  RiErrorWarningLine,
   RiLinkM,
   RiFileCopyLine,
   RiCheckLine,
   RiShareForwardLine,
   RiExternalLinkLine,
+  RiEyeLine,
+  RiEyeOffLine,
   type RemixiconComponentType,
 } from '@remixicon/react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
-import { merchant, disbursementSummary, walletSummary } from '@/data/mock'
-import { money } from '@/lib/format'
+import { Button, IconButton } from '@/components/ui/Button'
+import { Card, CardHeader, CardFooter } from '@/components/ui/Card'
+import { Sparkline } from '@/components/Sparkline'
+import {
+  merchant,
+  disbursementSummary,
+  walletSummary,
+  monthlyVolume,
+  recentActivity,
+  paymentLinkSummary,
+  qrPaymentTotal,
+} from '@/data/mock'
+import { money, signedMoney, count, formatDate, formatTime } from '@/lib/format'
 import { cn } from '@/lib/cn'
+
+/* The landing screen answers three questions, in this order: how much have I
+   got, which way is it moving, and is anything broken. The channel tiles that
+   used to fill this page answered none of them — they were a menu with
+   figures on it, and three of the five only ever said "not enabled". */
+
+const trend = monthlyVolume.map((point) => point.value)
+const thisMonth = trend[trend.length - 1] ?? 0
+const lastMonth = trend[trend.length - 2] ?? 0
 
 export default function Dashboard() {
   return (
     <>
       <PageHeader
         title="Dashboard"
-        description="Collections, disbursements and bill payments."
+        description={`${merchant.name} · last 12 months`}
+        actions={
+          <Button as={Link} to="/credit-card-payments/reports" iconAfter={RiArrowRightLine}>
+            Reports
+          </Button>
+        }
       />
 
-      <section aria-label="Payment channels" className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <ChannelCard
-          icon={RiArrowLeftDownLine}
-          tone="success"
-          title="Collections"
-          subtitle="Payin"
+      <section aria-label="Key figures" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric
+          icon={RiWallet3Line}
+          label="Wallet balance"
           value={money(walletSummary.balance)}
-          caption="Settled to wallet, available now"
-          to="/credit-card-payments/overview"
-          linkLabel="View collections"
+          meta="Available to disburse"
         />
-        <ChannelCard
+        <Metric
+          icon={RiArrowRightDownLine}
+          label="Collected this month"
+          value={money(thisMonth)}
+          delta={delta(thisMonth, lastMonth)}
+          trend={trend}
+          tone="success"
+        />
+        <Metric
           icon={RiArrowRightUpLine}
-          tone="brand"
-          title="Disbursements"
-          subtitle="Payout"
-          value={money(disbursementSummary.inProgress)}
-          caption="In flight to beneficiaries"
+          label="Disbursed"
+          value={money(disbursementSummary.settled)}
+          meta={`${count(walletSummary.transactions)} movements`}
+        />
+        <Metric
+          icon={RiErrorWarningLine}
+          label="Needs attention"
+          value={count(disbursementSummary.failedCount)}
+          meta="Failed payouts to review"
+          tone={disbursementSummary.failedCount > 0 ? 'danger' : 'neutral'}
           to="/credit-card-payments/disbursements"
-          linkLabel="View disbursements"
-        />
-        <ChannelCard
-          icon={RiBillLine}
-          tone="neutral"
-          title="BBPS"
-          subtitle="Bill payments"
-          value="—"
-          caption="Not enabled on this account yet"
-          disabled
         />
       </section>
 
-      <section aria-label="Acceptance" className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <FeatureCard
-          icon={RiQrScan2Line}
-          title="QR Scan"
-          description="Accept UPI against your static QR, reconciled by UTR."
-          state="paused"
-          stateLabel="Temporarily closed"
-          note="QR collection is closed right now. Submitted payments are still being settled."
-          to="/qr-payments/transactions"
-          linkLabel="View QR transactions"
-        />
-        <FeatureCard
-          icon={RiSmartphoneLine}
-          title="POS"
-          description="Card-present acceptance, settled to the same wallet."
-          state="soon"
-          stateLabel="Coming soon"
-          note="We'll let you know as soon as terminals are available in your region."
-        />
-      </section>
-
-      <PaymentLinkCard />
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+        <Activity />
+        <div className="space-y-4">
+          <PaymentLink />
+          <Channels />
+        </div>
+      </div>
     </>
   )
 }
 
-/* -------------------------------------------------------------------------- */
+function delta(current: number, previous: number) {
+  if (!previous) return null
+  return Math.round(((current - previous) / previous) * 100)
+}
 
-const TONE_TILE = {
-  success: 'bg-success-50 text-success-700',
-  brand: 'bg-brand-50 text-brand-700',
-  neutral: 'bg-ink-100 text-ink-500',
-} as const
+/* ------------------------------------------------------------------ metric */
 
-function ChannelCard({
+type Tone = 'neutral' | 'success' | 'danger'
+
+function Metric({
   icon: Icon,
-  tone,
-  title,
-  subtitle,
+  label,
   value,
-  caption,
+  meta,
+  delta: change,
+  trend: series,
+  tone = 'neutral',
   to,
-  linkLabel,
-  disabled = false,
 }: {
   icon: RemixiconComponentType
-  tone: keyof typeof TONE_TILE
-  title: string
-  subtitle: string
+  label: string
   value: string
-  caption: string
+  meta?: string
+  delta?: number | null
+  trend?: number[]
+  tone?: Tone
   to?: string
-  linkLabel?: string
-  disabled?: boolean
 }) {
-  return (
-    <Card className={cn('flex flex-col', disabled && 'bg-ink-25 shadow-none')}>
-      <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-start justify-between gap-3">
-          <span
-            className={cn(
-              'inline-flex size-9 items-center justify-center rounded-lg',
-              TONE_TILE[tone],
-            )}
-            aria-hidden
-          >
-            <Icon size={18} />
-          </span>
-          {disabled && <Badge tone="neutral">Not enabled</Badge>}
-        </div>
-
-        <h2 className="mt-4 text-md font-semibold tracking-[-0.01em] text-ink-900">
-          {title}
-          <span className="ml-1.5 text-sm font-normal text-ink-400">{subtitle}</span>
-        </h2>
-
-        <p
+  const body = (
+    <>
+      <div className="flex items-center gap-2">
+        <Icon
+          size={15}
           className={cn(
-            'mt-2 text-4xl font-semibold tracking-[-0.025em]',
-            disabled ? 'text-ink-300' : 'text-ink-900',
+            'shrink-0',
+            tone === 'danger' ? 'text-danger-600' : tone === 'success' ? 'text-success-600' : 'text-ink-400',
           )}
-        >
-          {value}
-        </p>
-        <p className="mt-1 text-sm text-ink-500">{caption}</p>
-      </div>
-
-      {to && linkLabel ? (
-        <CardLink to={to} label={linkLabel} />
-      ) : (
-        <p className="border-t border-ink-200 px-5 py-3 text-sm text-ink-400">
-          Nothing to review yet
-        </p>
-      )}
-    </Card>
-  )
-}
-
-/** Shared footer row so every card in a grid resolves to the same height. */
-function CardLink({ to, label }: { to: string; label: string }) {
-  return (
-    <Link
-      to={to}
-      className="group relative flex items-center justify-between border-t border-ink-200 px-5 py-3 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-25 hover:text-brand-700"
-    >
-      {label}
-      <RiArrowRightLine
-        size={16}
-        className="transition-transform duration-150 group-hover:translate-x-0.5"
-      />
-    </Link>
-  )
-}
-
-function FeatureCard({
-  icon: Icon,
-  title,
-  description,
-  state,
-  stateLabel,
-  note,
-  to,
-  linkLabel,
-}: {
-  icon: RemixiconComponentType
-  title: string
-  description: string
-  state: 'paused' | 'soon'
-  stateLabel: string
-  note: string
-  to?: string
-  linkLabel?: string
-}) {
-  return (
-    <Card className="flex flex-col">
-      <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-start justify-between gap-3">
-          <span
-            className="inline-flex size-9 items-center justify-center rounded-lg bg-ink-100 text-ink-600"
+          aria-hidden
+        />
+        <span className="text-xs font-medium text-ink-500">{label}</span>
+        {to && (
+          <RiArrowRightLine
+            size={14}
+            className="ml-auto text-ink-300 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-ink-600"
             aria-hidden
-          >
-            <Icon size={18} />
-          </span>
-          <Badge tone={state === 'paused' ? 'warning' : 'neutral'} dot={state === 'paused'}>
-            {stateLabel}
-          </Badge>
-        </div>
-
-        <h2 className="mt-4 text-md font-semibold tracking-[-0.01em] text-ink-900">{title}</h2>
-        <p className="mt-1 max-w-sm text-base text-ink-500">{description}</p>
-        <p className="mt-4 border-l-2 border-ink-200 pl-3 text-sm text-ink-500">{note}</p>
+          />
+        )}
       </div>
 
-      {to && linkLabel ? (
-        <CardLink to={to} label={linkLabel} />
-      ) : (
-        <p className="border-t border-ink-200 px-5 py-3 text-sm text-ink-400">
-          Nothing to review yet
-        </p>
-      )}
+      <p className="mt-3 text-3xl font-semibold tracking-[-0.025em] text-ink-900">{value}</p>
+
+      <div className="mt-2 flex min-h-8 items-end justify-between gap-3">
+        <div className="min-w-0">
+          {change != null && (
+            <span
+              className={cn(
+                'inline-flex items-center gap-1 text-xs font-medium',
+                change >= 0 ? 'text-success-700' : 'text-danger-700',
+              )}
+            >
+              {change >= 0 ? <RiArrowRightUpLine size={13} /> : <RiArrowRightDownLine size={13} />}
+              {Math.abs(change)}%
+              <span className="font-normal text-ink-400">vs last month</span>
+            </span>
+          )}
+          {meta && <p className="truncate text-xs text-ink-400">{meta}</p>}
+        </div>
+        {series && <Sparkline data={series} tone="success" className="h-8 w-24 shrink-0" />}
+      </div>
+    </>
+  )
+
+  const shell =
+    'group block rounded-xl border border-ink-200 bg-white px-5 py-4 shadow-xs transition-colors'
+
+  return to ? (
+    <Link to={to} className={cn(shell, 'hover:border-ink-300 hover:bg-ink-25')}>
+      {body}
+    </Link>
+  ) : (
+    <div className={shell}>{body}</div>
+  )
+}
+
+/* ---------------------------------------------------------------- activity */
+
+function Activity() {
+  return (
+    <Card className="lg:col-span-2">
+      <CardHeader title="Recent movement" description="Across every channel." />
+      <ul className="divide-y divide-ink-100">
+        {recentActivity.slice(0, 6).map((entry, index) => (
+          <li key={`${entry.date}-${index}`} className="flex items-center gap-3 px-5 py-3">
+            <span
+              className={cn(
+                'inline-flex size-7 shrink-0 items-center justify-center rounded-full',
+                entry.type === 'credit'
+                  ? 'bg-success-50 text-success-700'
+                  : 'bg-ink-100 text-ink-600',
+              )}
+              aria-hidden
+            >
+              {entry.type === 'credit' ? (
+                <RiArrowRightDownLine size={14} />
+              ) : (
+                <RiArrowRightUpLine size={14} />
+              )}
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-medium text-ink-900">{entry.description}</p>
+              <p className="truncate text-xs text-ink-500">
+                {formatDate(entry.date)}
+                <span className="mx-1.5 text-ink-300">·</span>
+                {formatTime(entry.date)}
+              </p>
+            </div>
+
+            <span
+              className={cn(
+                'tnum shrink-0 text-base font-medium',
+                entry.amount >= 0 ? 'text-success-700' : 'text-ink-900',
+              )}
+            >
+              {signedMoney(entry.amount)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <CardFooter>
+        <p className="text-sm text-ink-500">{count(walletSummary.transactions)} in total</p>
+        <Button
+          as={Link}
+          to="/credit-card-payments/wallet-ledger"
+          size="sm"
+          iconAfter={RiArrowRightLine}
+        >
+          Wallet ledger
+        </Button>
+      </CardFooter>
     </Card>
   )
 }
 
-function PaymentLinkCard() {
+/* ----------------------------------------------------------- payment link */
+
+/** The URL is a bearer capability: anyone holding it can be sent to pay you.
+    It stays masked until asked for, which also keeps it off the screen during
+    a shoulder-surf or a screen share. */
+function PaymentLink() {
+  const [revealed, setRevealed] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(merchant.paymentLink)
+  const copy = () => {
+    void navigator.clipboard.writeText(merchant.paymentLink).then(() => {
       setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      /* clipboard blocked — the field is selectable as a fallback */
-    }
+      window.setTimeout(() => setCopied(false), 1600)
+    })
   }
 
-  const share = async () => {
-    if (!navigator.share) return copy()
-    try {
-      await navigator.share({ title: 'Pay Sai Mobiles', url: merchant.paymentLink })
-    } catch {
-      /* user dismissed the share sheet */
+  const share = () => {
+    if (navigator.share) {
+      void navigator.share({ title: 'Pay Sai Mobiles', url: merchant.paymentLink }).catch(() => {})
+      return
     }
+    copy()
   }
 
   return (
-    <Card className="mt-4">
-      <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-start gap-3">
-          <span
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"
-            aria-hidden
-          >
-            <RiLinkM size={18} />
-          </span>
-          <div>
-            <h2 className="text-md font-semibold tracking-[-0.01em] text-ink-900">
-              Your payment link
-            </h2>
-            <p className="mt-0.5 text-sm text-ink-500">
-              Share this with customers to collect without raising an invoice.
-            </p>
-          </div>
+    <Card className="overflow-hidden">
+      <div className="flex items-center gap-3 px-5 py-4">
+        <span
+          className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
+          aria-hidden
+        >
+          <RiLinkM size={17} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-md font-semibold tracking-[-0.01em] text-ink-900">Payment link</p>
+          <p className="tnum text-xs text-ink-500">
+            {count(paymentLinkSummary.total)} sent
+            <span className="mx-1.5 text-ink-300">·</span>
+            {money(paymentLinkSummary.collected)} collected
+          </p>
         </div>
-        <Badge tone="success" dot className="self-start lg:self-auto">
-          Live
-        </Badge>
+        <IconButton
+          icon={revealed ? RiEyeOffLine : RiEyeLine}
+          label={revealed ? 'Hide the link' : 'Reveal the link'}
+          variant="secondary"
+          size="sm"
+          onClick={() => setRevealed((v) => !v)}
+        />
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-ink-200 p-5 sm:flex-row sm:items-center">
-        <input
-          readOnly
-          value={merchant.paymentLink}
-          aria-label="Payment link"
-          onFocus={(event) => event.currentTarget.select()}
-          className="h-9 min-w-0 flex-1 truncate rounded-lg border border-ink-200 bg-ink-50 px-3 font-mono text-sm text-ink-700 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 focus:outline-none"
-        />
-        <div className="flex shrink-0 items-center gap-2">
-          <Button
-            variant={copied ? 'secondary' : 'primary'}
-            icon={copied ? RiCheckLine : RiFileCopyLine}
-            onClick={copy}
-            className={cn(copied && 'text-success-700')}
+      {/* 0fr → 1fr animates height without measuring anything, so the panel
+          opens at its natural size whatever the URL length. */}
+      <div
+        className={cn(
+          'grid transition-[grid-template-rows,opacity] duration-300 ease-out',
+          revealed ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+        )}
+      >
+        <div className="overflow-hidden">
+          <div
+            className={cn(
+              'border-t border-ink-200 bg-ink-25 px-5 py-4 transition-transform duration-300 ease-out',
+              revealed ? 'translate-y-0' : '-translate-y-1',
+            )}
           >
-            {copied ? 'Copied' : 'Copy'}
-          </Button>
-          <Button icon={RiShareForwardLine} onClick={share}>
-            Share
-          </Button>
-          <Button
-            as="a"
-            href={merchant.paymentLink}
-            target="_blank"
-            rel="noreferrer noopener"
-            icon={RiExternalLinkLine}
-          >
-            Open
-          </Button>
+            <code className="block truncate rounded-lg border border-ink-200 bg-white px-3 py-2 font-mono text-xs text-ink-700">
+              {merchant.paymentLink}
+            </code>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={copied ? 'secondary' : 'primary'}
+                icon={copied ? RiCheckLine : RiFileCopyLine}
+                onClick={copy}
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </Button>
+              <Button size="sm" icon={RiShareForwardLine} onClick={share}>
+                Share
+              </Button>
+              <Button
+                as="a"
+                href={merchant.paymentLink}
+                target="_blank"
+                rel="noreferrer"
+                size="sm"
+                icon={RiExternalLinkLine}
+              >
+                Open
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
+    </Card>
+  )
+}
+
+/* ---------------------------------------------------------------- channels */
+
+type Channel = {
+  label: string
+  state: 'live' | 'paused' | 'off' | 'soon'
+  meta: string
+  to?: string
+}
+
+const CHANNELS: Channel[] = [
+  { label: 'Collections', state: 'live', meta: 'Payment link, QR', to: '/credit-card-payments/overview' },
+  { label: 'Disbursements', state: 'live', meta: 'IMPS payouts', to: '/credit-card-payments/disbursements' },
+  { label: 'QR Scan', state: 'paused', meta: `${count(qrPaymentTotal)} collected`, to: '/qr-payments/transactions' },
+  { label: 'BBPS', state: 'off', meta: 'Bill payments' },
+  { label: 'POS', state: 'soon', meta: 'Card present' },
+]
+
+const STATE: Record<Channel['state'], { tone: 'success' | 'warning' | 'neutral' | 'info'; label: string }> = {
+  live: { tone: 'success', label: 'Live' },
+  paused: { tone: 'warning', label: 'Paused' },
+  off: { tone: 'neutral', label: 'Off' },
+  soon: { tone: 'info', label: 'Soon' },
+}
+
+function Channels() {
+  return (
+    <Card>
+      <CardHeader title="Channels" />
+      <ul className="divide-y divide-ink-100">
+        {CHANNELS.map((channel) => {
+          const state = STATE[channel.state]
+          const row = (
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-base font-medium text-ink-800">{channel.label}</p>
+                <p className="truncate text-xs text-ink-500">{channel.meta}</p>
+              </div>
+              <Badge tone={state.tone} dot>
+                {state.label}
+              </Badge>
+              {channel.to && (
+                <RiArrowRightLine
+                  size={15}
+                  className="shrink-0 text-ink-300 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-ink-600"
+                  aria-hidden
+                />
+              )}
+            </>
+          )
+
+          return (
+            <li key={channel.label}>
+              {channel.to ? (
+                <Link
+                  to={channel.to}
+                  className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-ink-25"
+                >
+                  {row}
+                </Link>
+              ) : (
+                <div className="flex items-center gap-3 px-5 py-3 opacity-70">{row}</div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
     </Card>
   )
 }
