@@ -20,13 +20,42 @@ import { client, isLive } from '@/lib/supabase'
 const RATE_LIMITED =
   'Too many codes requested. This project sends 2 emails an hour until a mail provider is connected — wait a few minutes and try again.'
 
+/* Supabase refuses to send to addresses it expects to bounce, and the raw
+   reply is a developer's sentence — Email address "x@gmail.com" is invalid —
+   which tells an applicant nothing about what to do next.
+
+   Two rules account for nearly every rejection. Gmail has never issued a
+   username under six characters, so anything shorter is turned away before a
+   message is sent. And the RFC 2606 reserved domains (example.com, .test,
+   .invalid, .local) are refused outright. Both are the address being wrong,
+   not the form. */
+const GMAIL_TOO_SHORT =
+  'A Gmail address needs at least six characters before the @, so this one cannot be a real inbox. Check the spelling.'
+
+const UNDELIVERABLE =
+  'That address was turned away as undeliverable. Use an inbox you can actually open — made-up and example addresses are rejected.'
+
+function readable(error: { message: string; code?: string }, email: string) {
+  if (/rate limit|too many/i.test(error.message)) return RATE_LIMITED
+
+  const rejected =
+    error.code === 'email_address_invalid' || /email address.*invalid/i.test(error.message)
+  if (!rejected) return error.message
+
+  const at = email.lastIndexOf('@')
+  const name = at === -1 ? '' : email.slice(0, at)
+  const host = at === -1 ? '' : email.slice(at + 1)
+  return host === 'gmail.com' && name.length < 6 ? GMAIL_TOO_SHORT : UNDELIVERABLE
+}
+
 export async function sendEmailCode(email: string) {
+  const address = email.trim().toLowerCase()
   const { error } = await client().auth.signInWithOtp({
-    email: email.trim().toLowerCase(),
+    email: address,
     options: { shouldCreateUser: true },
   })
   if (error) {
-    throw new Error(/rate limit|too many/i.test(error.message) ? RATE_LIMITED : error.message)
+    throw new Error(readable(error, address))
   }
 }
 

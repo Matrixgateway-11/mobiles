@@ -11,9 +11,16 @@ const configured = (import.meta.env.VITE_PUBLIC_APP_URL ?? '').trim().replace(/\
 export const APP_URL =
   configured || (typeof window === 'undefined' ? '' : window.location.origin)
 
-/** True once the deployed domain is configured, rather than guessed from the
-    browser. The Add User screen says so, so nobody mails out a localhost link. */
-export const APP_URL_IS_CONFIGURED = Boolean(configured)
+/* A loopback host resolves on every device — to that device. So a link built
+   from localhost is worse than an unset domain: it looks fine in the sender's
+   browser and opens a connection error on the applicant's phone. Setting
+   VITE_PUBLIC_APP_URL to localhost must not count as having configured one.
+   A LAN address does count; it is reachable from a phone on the same wifi. */
+const LOOPBACK = /^https?:\/\/(localhost|127(?:\.\d+){3}|\[::1\])(?::\d+)?$/i
+
+/** True once links carry a host that resolves for whoever receives them. The
+    Add User screen says so, so nobody mails out a link to their own machine. */
+export const APP_URL_IS_PUBLIC = Boolean(APP_URL) && !LOOPBACK.test(APP_URL)
 
 export const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL ?? '').trim()
 export const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim()

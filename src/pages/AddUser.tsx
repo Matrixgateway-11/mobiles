@@ -38,7 +38,7 @@ import {
   invitationsFrom,
   linkFor,
 } from '@/lib/network'
-import { APP_URL, APP_URL_IS_CONFIGURED } from '@/lib/config'
+import { APP_URL, APP_URL_IS_PUBLIC } from '@/lib/config'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
@@ -452,12 +452,12 @@ function LinkOnboarding({ roles }: { roles: InviteRole[] }) {
 
   return (
     <div className="space-y-4">
-      {!APP_URL_IS_CONFIGURED && (
-        <Alert tone="warning" title="Links will not work outside this machine">
-          No public domain is configured, so a generated link carries{' '}
-          <span className="font-mono text-sm">{APP_URL}</span>. Set{' '}
-          <span className="font-mono text-sm">VITE_PUBLIC_APP_URL</span> to the live domain before
-          sending any of these to an applicant.
+      {!APP_URL_IS_PUBLIC && (
+        <Alert tone="warning" title="Links will only open on this machine">
+          Links are being built from <span className="font-mono text-sm">{APP_URL}</span>, which
+          points at whichever device opens it — so an applicant gets a connection error, not the
+          form. Set <span className="font-mono text-sm">VITE_PUBLIC_APP_URL</span> to the deployed
+          domain before sending any of these out.
         </Alert>
       )}
 
