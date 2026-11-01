@@ -100,17 +100,12 @@ function FormSection({
 }) {
   return (
     <Card>
-      <div className="flex items-start gap-3 border-b border-ink-200 px-5 py-4">
-        <span
-          className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"
-          aria-hidden
-        >
-          <Icon size={16} />
-        </span>
-        <div className="min-w-0">
+      <div className="border-b border-ink-200 px-5 py-4">
+        <div className="flex items-center gap-2.5">
+          <Icon size={17} className="shrink-0 text-brand-600" aria-hidden />
           <h2 className="text-md font-semibold tracking-[-0.01em] text-ink-900">{title}</h2>
-          {description && <p className="mt-0.5 text-sm text-ink-500">{description}</p>}
         </div>
+        {description && <p className="mt-1 text-sm text-ink-500">{description}</p>}
       </div>
       <div className="p-5">{children}</div>
     </Card>

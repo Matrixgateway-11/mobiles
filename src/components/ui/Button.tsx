@@ -11,9 +11,13 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'subtle' | 'danger'
 type Size = 'sm' | 'md' | 'lg'
 
 const VARIANTS: Record<Variant, string> = {
-  // A pressed button that moves a hair is the cheapest feedback there is.
+  /* Near-black, not brand. A console is mostly buttons; painting every primary
+     action in the accent spends the one colour that should mean "you are
+     here". Black reads as the obvious thing to press without shouting, and it
+     is why Linear, Vercel and Stripe's newer work all land there.
+     A pressed button that moves a hair is the cheapest feedback there is. */
   primary:
-    'bg-brand-600 text-white shadow-xs hover:bg-brand-700 active:bg-brand-800 active:translate-y-px',
+    'bg-ink-900 text-white shadow-xs hover:bg-ink-800 active:bg-ink-950 active:translate-y-px',
   secondary:
     'bg-white text-ink-800 border border-ink-200 shadow-xs hover:bg-ink-50 hover:border-ink-300 active:bg-ink-100 active:translate-y-px',
   ghost: 'text-ink-600 hover:bg-ink-100 hover:text-ink-900 active:bg-ink-200',

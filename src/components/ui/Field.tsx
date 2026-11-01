@@ -11,7 +11,7 @@ import { cn } from '@/lib/cn'
 const CONTROL =
   'h-9 w-full rounded-lg border border-ink-200 bg-white px-3 text-base text-ink-900 ' +
   'placeholder:text-ink-400 transition-colors ' +
-  'hover:border-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 focus:outline-none ' +
+  'hover:border-ink-300 focus:border-brand-600 focus:ring-[3px] focus:ring-brand-600/15 focus:outline-none ' +
   'disabled:bg-ink-50 disabled:text-ink-400'
 
 export function Field({

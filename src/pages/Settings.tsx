@@ -67,7 +67,7 @@ function ProfileTab() {
       <Card>
         <CardBody className="flex flex-wrap items-start gap-5">
           <span
-            className="inline-flex size-16 shrink-0 items-center justify-center rounded-full bg-brand-700 text-xl font-semibold text-white"
+            className="inline-flex size-16 shrink-0 items-center justify-center rounded-full bg-ink-900 text-xl font-semibold text-white"
             aria-hidden
           >
             {merchant.initials}
@@ -294,17 +294,12 @@ function CredentialCard({
 }) {
   return (
     <Card>
-      <div className="flex items-start gap-3 border-b border-ink-200 px-5 py-4">
-        <span
-          className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"
-          aria-hidden
-        >
-          <Icon size={16} />
-        </span>
-        <div className="min-w-0">
+      <div className="border-b border-ink-200 px-5 py-4">
+        <div className="flex items-center gap-2.5">
+          <Icon size={17} className="shrink-0 text-brand-600" aria-hidden />
           <h2 className="text-md font-semibold tracking-[-0.01em] text-ink-900">{title}</h2>
-          <p className="mt-0.5 text-sm text-ink-500">{description}</p>
         </div>
+        <p className="mt-1 text-sm text-ink-500">{description}</p>
       </div>
       <form className="space-y-4 p-5" onSubmit={(event) => event.preventDefault()}>
         {fields.map((field) => (

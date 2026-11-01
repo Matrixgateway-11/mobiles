@@ -4,13 +4,13 @@ import { cn } from '@/lib/cn'
 
 type Tone = 'neutral' | 'success' | 'danger' | 'warning' | 'info' | 'brand'
 
-const TILES: Record<Tone, string> = {
-  neutral: 'bg-ink-100 text-ink-600',
-  success: 'bg-success-50 text-success-700',
-  danger: 'bg-danger-50 text-danger-700',
-  warning: 'bg-warning-50 text-warning-700',
-  info: 'bg-info-50 text-info-700',
-  brand: 'bg-brand-50 text-brand-700',
+const GLYPH: Record<Tone, string> = {
+  neutral: 'text-ink-400',
+  success: 'text-success-600',
+  danger: 'text-danger-600',
+  warning: 'text-warning-600',
+  info: 'text-info-600',
+  brand: 'text-brand-600',
 }
 
 type StatCardProps = {
@@ -33,24 +33,17 @@ export function StatCard({
   return (
     <div
       className={cn(
-        'rounded-xl border border-ink-200 bg-white px-5 py-4 shadow-xs',
+        'rounded-xl border border-ink-200 bg-white px-5 py-4 shadow-xs transition-colors hover:border-ink-300',
         className,
       )}
     >
-      <div className="flex items-center gap-2.5">
-        {Icon && (
-          <span
-            className={cn('inline-flex size-7 items-center justify-center rounded-md', TILES[tone])}
-            aria-hidden
-          >
-            <Icon size={16} />
-          </span>
-        )}
-        <span className="text-xs font-medium tracking-[0.01em] text-ink-500">{label}</span>
+      <div className="flex items-center gap-2">
+        {Icon && <Icon size={15} className={cn('shrink-0', GLYPH[tone])} aria-hidden />}
+        <span className="text-xs font-medium text-ink-500">{label}</span>
       </div>
       {/* Proportional figures: at this size equal-width digits read loose */}
-      <p className="mt-3 text-3xl font-semibold tracking-[-0.02em] text-ink-900">{value}</p>
-      {meta && <p className="mt-1 text-xs text-ink-400">{meta}</p>}
+      <p className="mt-2.5 text-3xl font-semibold tracking-[-0.025em] text-ink-900">{value}</p>
+      {meta && <p className="mt-1 truncate text-xs text-ink-400">{meta}</p>}
     </div>
   )
 }

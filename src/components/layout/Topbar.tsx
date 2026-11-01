@@ -226,7 +226,7 @@ function UserMenu() {
         )}
       >
         <span
-          className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-700 text-2xs font-semibold text-white"
+          className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-ink-900 text-2xs font-semibold text-white"
           aria-hidden
         >
           {initialsOf(account.name)}

@@ -14,9 +14,9 @@ import { compactINR, money } from '@/lib/format'
 
 export type Point = { label: string; value: number }
 
-const BRAND = '#4f46e5'
-const AXIS = '#94a3b8'
-const GRID = '#e2e8f0'
+const BRAND = '#0d9488'
+const AXIS = '#a1a1aa'
+const GRID = '#e4e4e7'
 
 type LabelMode = 'nonzero' | 'peak' | 'none'
 
@@ -85,7 +85,7 @@ export function BarSeriesChart({
             width={48}
             tickFormatter={compactINR}
           />
-          <Tooltip cursor={{ fill: 'rgba(15,23,42,0.04)' }} content={<ValueTooltip />} offset={12} />
+          <Tooltip cursor={{ fill: 'rgba(9,9,11,0.04)' }} content={<ValueTooltip />} offset={12} />
           <Bar
             dataKey="value"
             fill={BRAND}
@@ -97,7 +97,7 @@ export function BarSeriesChart({
               dataKey="tag"
               position="top"
               offset={8}
-              fill="#334155"
+              fill="#3f3f46"
               fontSize={11}
               fontWeight={500}
             />

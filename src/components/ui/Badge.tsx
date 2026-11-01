@@ -6,7 +6,7 @@ import type { AccountStatus, InviteStatus, Role } from '@/data/network'
 type Tone = 'neutral' | 'success' | 'danger' | 'warning' | 'info' | 'brand'
 
 const TONES: Record<Tone, { chip: string; dot: string }> = {
-  neutral: { chip: 'bg-ink-100 text-ink-700 ring-ink-200', dot: 'bg-ink-400' },
+  neutral: { chip: 'bg-ink-50 text-ink-700 ring-ink-200', dot: 'bg-ink-400' },
   success: { chip: 'bg-success-50 text-success-800 ring-success-200', dot: 'bg-success-600' },
   danger: { chip: 'bg-danger-50 text-danger-800 ring-danger-200', dot: 'bg-danger-600' },
   warning: { chip: 'bg-warning-50 text-warning-700 ring-warning-200', dot: 'bg-warning-600' },
